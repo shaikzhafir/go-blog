@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://unpkg.com/htmx.org/dist/htmx.js"></script>
+    <link href="/static/output.css" type="text/css" rel="stylesheet" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div class="py-20 mx-20 sm:mx-40 bg-slate-500">
+      <p class="text-3xl text-green-500">welcome to szhafir blog</p>
+      <div hx-get="/reviews" hx-swap="innerHTML" hx-trigger="load"></div>
+      <div hx-get="/blogposts" hx-swap="innerHTML" hx-trigger="load"></div>
+    </div>
+  </body>
+</html>
