@@ -10,6 +10,7 @@ import (
 func main() {
 	mux := http.NewServeMux()
 
+	// for js and css files
 	staticFs := http.FileServer(http.Dir("./static"))
 	indexFs := http.FileServer(http.Dir("./"))
 	mux.Handle("/static/", http.StripPrefix("/static/", staticFs))
@@ -17,6 +18,7 @@ func main() {
 	handler := markdownHandler.NewHandler()
 	mux.HandleFunc("/test", handler.ServeHTTP)
 	mux.HandleFunc("/reviews", handler.GetReviewsList())
+	mux.HandleFunc("/reviews/", handler.GetReviewByTitle())
 	mux.HandleFunc("/blogposts", handler.GetBlogList())
 	mux.Handle("/", indexFs)
 

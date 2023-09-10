@@ -2,18 +2,24 @@ package markdownHandler
 
 import (
 	"bytes"
-	"io/ioutil"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/yuin/goldmark"
+	meta "github.com/yuin/goldmark-meta"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/text"
 )
 
 type MarkdownHandler interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 	GetReviewsList() http.HandlerFunc
+	GetReviewByTitle() http.HandlerFunc
 	GetBlogList() http.HandlerFunc
 }
 
@@ -44,18 +50,103 @@ func (h *markdownHandler) GetBlogList() http.HandlerFunc {
 		html := "<html><body><h1> test" + "blogposts" + "</h1></body></html>"
 		w.Write([]byte(html))
 	}
-
 }
 
 func (h *markdownHandler) GetReviewsList() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		mdfile, err := ioutil.ReadFile("./reviews/haha.md")
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			return
-		}
-		html := mdToHTML(mdfile)
-		w.Write(html)
+		markdown := goldmark.New(
+			goldmark.WithExtensions(
+				meta.New(
+					meta.WithStoresInDocument(),
+				),
+			),
+		)
+		filepath.WalkDir("./reviews", func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				w.Write([]byte(err.Error()))
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			mdfile, err := os.ReadFile(path)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+			document := markdown.Parser().Parse(text.NewReader(mdfile))
+			metaData := document.OwnerDocument().Meta()
+			title := metaData["Title"]
+			slug := metaData["Slug"]
+			pubDate := metaData["Published"]
+			w.Write([]byte(fmt.Sprintf(`
+			<div class="my-2" hx-get="/reviews/%s" hx-trigger="click" hx-swap="outerHTML" hx-target="#reviews">
+			<h1>%v</h1>
+			<h3>%v</h3>
+			</div>
+			`, slug, title, pubDate)))
+			return nil
+		})
+	}
+}
+
+func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
+	// make a map of title to path
+	// iterate through map and find the path
+	// read the file at that path
+	// convert the file to html
+	// return the html
+	return func(w http.ResponseWriter, r *http.Request) {
+		fullPath := r.URL.Path
+		segments := strings.Split(fullPath, "/")
+		currentSlug := segments[len(segments)-1]
+		fmt.Printf("slug: %v\n", currentSlug)
+		markdown := goldmark.New(
+			goldmark.WithExtensions(
+				meta.New(
+					meta.WithStoresInDocument(),
+				),
+			),
+		)
+		filepath.WalkDir("./reviews", func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				w.Write([]byte(err.Error()))
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			mdfile, err := os.ReadFile(path)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+
+			document := markdown.Parser().Parse(text.NewReader(mdfile))
+			metaData := document.OwnerDocument().Meta()
+
+			title := metaData["Title"]
+			slug := metaData["Slug"]
+			if slug != currentSlug {
+				return nil
+			}
+
+			var buf bytes.Buffer
+			markdown.Convert(mdfile, &buf)
+			fmt.Println(buf.String())
+
+			htmlToDisplay := fmt.Sprintf(`
+			<div>
+			<a href="/">take me back this post hurts my eyes</a>
+			<h2>%s</h2>
+			<h3 class="mb-10">%s</h3>
+			`, title, metaData["Published"])
+
+			htmlToDisplay += buf.String()
+			htmlToDisplay += "</div>"
+
+			w.Write([]byte(htmlToDisplay))
+
+			return nil
+		})
 	}
 }
 
@@ -82,4 +173,21 @@ func mdToHTML(source []byte) []byte {
 	}
 
 	return buf.Bytes()
+}
+
+func splitMetadataAndContent(markdownText string) (metadata string, content string) {
+	lines := strings.Split(markdownText, "\n")
+
+	// Check for metadata delimiter "---"
+	if len(lines) >= 3 && lines[0] == "---" {
+		// Extract metadata
+		metadata = strings.Join(lines[1:2], "\n")
+		// Extract content
+		content = strings.Join(lines[3:], "\n")
+	} else {
+		// No metadata found, consider the entire document as content
+		content = markdownText
+	}
+
+	return metadata, content
 }
