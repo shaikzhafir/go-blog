@@ -6,15 +6,18 @@
     h1 {
       @apply text-4xl;
       @apply font-bold;
+      @apply my-5;
     }
     h2 {
       @apply text-2xl;
       @apply font-bold;
+      @apply my-5;
   
     }
     h3 {
       @apply text-lg;
       @apply font-bold;
+      @apply my-5;
   
     }
 

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://unpkg.com/htmx.org/dist/htmx.js"></script>
+    <link href="/static/output.css" type="text/css" rel="stylesheet" />
+    <title>get out of here!</title>
+  </head>
+  <body>
+    <div class="py-20 mx-20 sm:mx-40 bg-slate-500 mb-10">
+      <a href="/">
+        <p class="text-3xl my-2 text-green-500">welcome to szhafir blog</p>
+      </a>
+        <p class="font-bold text-2xl mt-2">{{.Title}}</h2>
+        <p class="mb-10">{{.Published}}</h3>
+        {{.Content}}
+    </div>
+  </body>
+</html>

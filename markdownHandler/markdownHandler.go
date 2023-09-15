@@ -3,6 +3,7 @@ package markdownHandler
 import (
 	"bytes"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -79,14 +80,23 @@ func (h *markdownHandler) GetReviewsList() http.HandlerFunc {
 			slug := metaData["Slug"]
 			pubDate := metaData["Published"]
 			w.Write([]byte(fmt.Sprintf(`
-			<div class="my-2" hx-get="/reviews/%s" hx-trigger="click" hx-swap="outerHTML" hx-target="#reviews">
-			<h1>%v</h1>
-			<h3>%v</h3>
+			<div class="my-2">
+			<a href="/reviews/%s">
+			<p class="font-bold text-2xl">%v</p>
+			<p>%v</p>
+			</a>
 			</div>
 			`, slug, title, pubDate)))
 			return nil
 		})
 	}
+}
+
+type ReviewData struct {
+	Title     string
+	Slug      string
+	Published string
+	Content   template.HTML
 }
 
 func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
@@ -101,6 +111,10 @@ func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
 		currentSlug := segments[len(segments)-1]
 		fmt.Printf("slug: %v\n", currentSlug)
 		markdown := goldmark.New(
+			goldmark.WithRendererOptions(
+				html.WithHardWraps(),
+				html.WithXHTML(),
+			),
 			goldmark.WithExtensions(
 				meta.New(
 					meta.WithStoresInDocument(),
@@ -130,10 +144,20 @@ func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
 			}
 
 			var buf bytes.Buffer
-			markdown.Convert(mdfile, &buf)
+			err = markdown.Convert(mdfile, &buf)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
 			fmt.Println(buf.String())
 
-			htmlToDisplay := fmt.Sprintf(`
+			review := ReviewData{
+				Title:     title.(string),
+				Slug:      slug.(string),
+				Published: metaData["Published"].(string),
+				Content:   template.HTML(buf.String()),
+			}
+
+			/* htmlToDisplay := fmt.Sprintf(`
 			<div>
 			<a href="/">take me back this post hurts my eyes</a>
 			<h2>%s</h2>
@@ -143,7 +167,17 @@ func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
 			htmlToDisplay += buf.String()
 			htmlToDisplay += "</div>"
 
-			w.Write([]byte(htmlToDisplay))
+			w.Write([]byte(htmlToDisplay)) */
+
+			tmpl, err := template.ParseFiles("./templates/blog.html")
+			if err != nil {
+				w.Write([]byte(err.Error()))
+			}
+
+			err = tmpl.Execute(w, review)
+			if err != nil {
+				w.Write([]byte(err.Error()))
+			}
 
 			return nil
 		})
