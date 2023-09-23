@@ -27,7 +27,7 @@ func main() {
 
 	isDev := os.Getenv("DEV")
 	if isDev == "true" {
-		log.Fatal(http.ListenAndServe(":8080", nil))
+		log.Fatal(http.ListenAndServe(":8080", mux))
 
 	} else {
 		certFile := os.Getenv("CERT_FILE")
