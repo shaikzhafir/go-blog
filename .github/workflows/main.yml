@@ -24,21 +24,21 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo env.SSH_PRIVATE_KEY > ~/.ssh/id_rsa
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Copy Go Binary
         run: |
-          scp -i ~/.ssh/id_rsa ./htmx-blog github@env.REMOTE_VM_IP:/opt/blog
+          scp -i ~/.ssh/id_rsa ./htmx-blog github@"$REMOTE_VM_IP":/opt/blog
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
 
       - name: Reload Systemd Service
         run: |
-          ssh -i ~/.ssh/id_rsa github@env.REMOTE_VM_IP 'sudo systemctl reload your-service-name'
+          ssh -i ~/.ssh/id_rsa github@"$REMOTE_VM_IP" 'sudo systemctl reload your-service-name'
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
