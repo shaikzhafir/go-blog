@@ -7,7 +7,4 @@ Tags:
   - book
 ---
 
-# test 1 2 3 
-
-whats up whats up 
-lalala
+# To be updated once im done reading it

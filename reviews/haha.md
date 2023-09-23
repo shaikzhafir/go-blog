@@ -11,7 +11,7 @@ Tags:
 # this is just some random shit
 sad that i had to add some margin for h1 tags 
 else i cant add multiple spaces between components
-## i hope it works fuck
+## limmy
 
 
 ![Alt text](../static/limmy.jpg)
