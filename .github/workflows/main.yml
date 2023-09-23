@@ -1,0 +1,46 @@
+name: Deploy Go Binary to Remote VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19 # Specify the Go version you need
+
+      - name: Build Go Binary
+        run: go build -o htmx-blog
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -t rsa $ >> ~/.ssh/known_hosts
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Copy Go Binary
+        run: |
+          scp ./htmx-blog github@$REMOTE_VM_IP:/opt/blog
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
+
+      - name: Reload Systemd Service
+        run: |
+          ssh -i ~/.ssh/id_rsa github@$REMOTE_VM_IP 'sudo systemctl reload your-service-name'
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
+  
