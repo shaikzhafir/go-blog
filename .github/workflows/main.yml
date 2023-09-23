@@ -38,9 +38,10 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}   
 
-      - name: Copy Go Binary
+      - name: Copy Go Binary and reviews folder
         run: |
           scp -i ~/.ssh/id_rsa ./htmx-blog github@"$REMOTE_VM_IP":/opt/blog
+          scp -i ~/.ssh/id_rsa -R ./reviews github@"$REMOTE_VM_IP":/opt/blog
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
