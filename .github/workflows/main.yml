@@ -40,7 +40,7 @@ jobs:
 
       - name: Copy whole dir to VM lol
         run: |
-          scp -i ~/.ssh/id_rsa -r ./ github@"$REMOTE_VM_IP":/opt/blog
+          scp -i ~/.ssh/id_rsa -r * github@"$REMOTE_VM_IP":/opt/blog
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
