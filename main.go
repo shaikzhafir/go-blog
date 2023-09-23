@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"htmx-blog/markdownHandler"
 )
@@ -22,8 +23,21 @@ func main() {
 	mux.HandleFunc("/blogposts", handler.GetBlogList())
 	mux.Handle("/", indexFs)
 
-	err := http.ListenAndServe(":3000", mux)
-	if err != nil {
-		log.Fatalf("server exited with err %v", err)
+	//log.Fatal(http.ListenAndServe("127.0.0.1:8081", mux))
+
+	isDev := os.Getenv("DEV")
+	if isDev == "true" {
+		log.Fatal(http.ListenAndServe(":8080", nil))
+
+	} else {
+		certFile := os.Getenv("CERT_FILE")
+		if certFile == "" {
+			log.Fatal("CERT_FILE env variable not set")
+		}
+		keyFile := os.Getenv("KEY_FILE")
+		if keyFile == "" {
+			log.Fatal("KEY_FILE env variable not set")
+		}
+		log.Fatal(http.ListenAndServeTLS(":443", certFile, keyFile, mux))
 	}
 }
