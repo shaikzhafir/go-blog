@@ -30,6 +30,13 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
+          
+      - name: Stop Systemd Service
+        run: |
+          ssh -i ~/.ssh/id_rsa github@"$REMOTE_VM_IP" 'sudo systemctl stop blog'
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}   
 
       - name: Copy Go Binary
         run: |
@@ -38,9 +45,9 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
 
-      - name: Reload Systemd Service
+      - name: Restart Systemd Service
         run: |
-          ssh -i ~/.ssh/id_rsa github@"$REMOTE_VM_IP" 'sudo systemctl reload your-service-name'
+          ssh -i ~/.ssh/id_rsa github@"$REMOTE_VM_IP" 'sudo systemctl restart blog'
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
