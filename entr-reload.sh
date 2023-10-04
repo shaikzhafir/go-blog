@@ -1,1 +1,1 @@
-find . \( -name "*.go" -o -name "*.html" \) | entr -r go run *.go
+find . \( -name "*.go" -o -name "*.html" \) ! -name "*_test.go" | entr -r go run main.go

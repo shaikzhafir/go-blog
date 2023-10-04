@@ -112,8 +112,7 @@ func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
 		fmt.Printf("slug: %v\n", currentSlug)
 		markdown := goldmark.New(
 			goldmark.WithRendererOptions(
-				html.WithHardWraps(),
-				html.WithXHTML(),
+				html.WithUnsafe(),
 			),
 			goldmark.WithExtensions(
 				meta.New(
