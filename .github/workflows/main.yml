@@ -33,22 +33,25 @@ jobs:
           
       - name: Stop Systemd Service
         run: |
-          ssh -i ~/.ssh/id_rsa github@"$REMOTE_VM_IP" 'sudo systemctl stop blog'
+          ssh -i ~/.ssh/id_rsa "$SSH_USER"@"$REMOTE_VM_IP" 'sudo systemctl stop blog'
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}   
+          SSH_USER: ${{ secrets.SSH_USER }}
 
       - name: Copy whole dir to VM lol
         run: |
-          scp -i ~/.ssh/id_rsa -r * github@"$REMOTE_VM_IP":/opt/blog
+          scp -i ~/.ssh/id_rsa -r * "$SSH_USER"@"$REMOTE_VM_IP":/opt/blog
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
+          SSH_USER: ${{ secrets.SSH_USER }}
 
       - name: Restart Systemd Service
         run: |
-          ssh -i ~/.ssh/id_rsa github@"$REMOTE_VM_IP" 'sudo systemctl restart blog'
+          ssh -i ~/.ssh/id_rsa "$SSH_USER"@"$REMOTE_VM_IP" 'sudo systemctl restart blog'
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
+          SSH_USER: ${{ secrets.SSH_USER }}
   
