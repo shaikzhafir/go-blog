@@ -1,6 +1,6 @@
 module htmx-blog
 
-go 1.19
+go 1.21
 
 require (
 	github.com/yuin/goldmark v1.5.5

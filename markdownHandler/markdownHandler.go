@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	log "htmx-blog/logging"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -72,7 +73,7 @@ func (h *markdownHandler) GetReviewsList() http.HandlerFunc {
 			}
 			mdfile, err := os.ReadFile(path)
 			if err != nil {
-				fmt.Println(err.Error())
+				log.Error(err.Error(), err)
 			}
 			document := markdown.Parser().Parse(text.NewReader(mdfile))
 			metaData := document.OwnerDocument().Meta()
@@ -109,7 +110,6 @@ func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
 		fullPath := r.URL.Path
 		segments := strings.Split(fullPath, "/")
 		currentSlug := segments[len(segments)-1]
-		fmt.Printf("slug: %v\n", currentSlug)
 		markdown := goldmark.New(
 			goldmark.WithRendererOptions(
 				html.WithUnsafe(),
@@ -130,7 +130,7 @@ func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
 			}
 			mdfile, err := os.ReadFile(path)
 			if err != nil {
-				fmt.Println(err.Error())
+				log.Error(err.Error(), err)
 			}
 
 			document := markdown.Parser().Parse(text.NewReader(mdfile))
@@ -145,9 +145,9 @@ func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
 			var buf bytes.Buffer
 			err = markdown.Convert(mdfile, &buf)
 			if err != nil {
-				fmt.Println(err.Error())
+				log.Error(err.Error(), err)
 			}
-			fmt.Println(buf.String())
+			log.Info("title: %v", title)
 
 			review := ReviewData{
 				Title:     title.(string),

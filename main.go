@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	log "htmx-blog/logging"
 	"net/http"
 	"os"
 
@@ -10,7 +10,7 @@ import (
 
 func main() {
 	mux := http.NewServeMux()
-
+	log.Info("Starting server %s", os.Getenv("DEV"))
 	// for js and css files
 	staticFs := http.FileServer(http.Dir("./static"))
 	indexFs := http.FileServer(http.Dir("./"))
@@ -27,8 +27,7 @@ func main() {
 
 	isDev := os.Getenv("DEV")
 	if isDev == "true" {
-		log.Fatal(http.ListenAndServe(":8080", mux))
-
+		log.Fatal("server died", http.ListenAndServe(":8080", mux))
 	} else {
 		certFile := os.Getenv("CERT_FILE")
 		if certFile == "" {
@@ -38,6 +37,6 @@ func main() {
 		if keyFile == "" {
 			log.Fatal("KEY_FILE env variable not set")
 		}
-		log.Fatal(http.ListenAndServeTLS(":443", certFile, keyFile, mux))
+		log.Fatal("server died", http.ListenAndServeTLS(":443", certFile, keyFile, mux))
 	}
 }
