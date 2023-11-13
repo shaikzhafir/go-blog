@@ -156,19 +156,7 @@ func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
 				Content:   template.HTML(buf.String()),
 			}
 
-			/* htmlToDisplay := fmt.Sprintf(`
-			<div>
-			<a href="/">take me back this post hurts my eyes</a>
-			<h2>%s</h2>
-			<h3 class="mb-10">%s</h3>
-			`, title, metaData["Published"])
-
-			htmlToDisplay += buf.String()
-			htmlToDisplay += "</div>"
-
-			w.Write([]byte(htmlToDisplay)) */
-
-			tmpl, err := template.ParseFiles("./templates/blog.html")
+			tmpl, err := template.ParseFiles("./templates/blogPost.html")
 			if err != nil {
 				w.Write([]byte(err.Error()))
 			}
@@ -177,7 +165,6 @@ func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
 			if err != nil {
 				w.Write([]byte(err.Error()))
 			}
-
 			return nil
 		})
 	}
