@@ -7,10 +7,6 @@ Tags:
   - book
 ---
 
-# To be updated once im done reading it
-
-## Update, I am done reading it. 
-
 The story starts off with like some news excerpt, (that doesn't seem to have any significance to the reader), and proceeds to mention that the following text is a statement from Dr. Yu Tsun, a Chinese spy<br><br>
 What follows is him being chased by some allied forces fella, and his goal is to reach this other dude called Dr. Stephen **Albert** (trust me this will all make sense).<br><br>
 He visits the home of Dr. Albert, who *coincidentally* has deciphered the work of Yu's ancestor, which is actually a mysterious labyrinth-like narrative of time and reality + an actual garden labyrinth thingy<br><br>
@@ -19,3 +15,5 @@ Just then, the allied forces fella came in. There is a poignant moment between D
 *"Time forks, perpetually, into countless futures. In one of them, I am your enemy"*<br><br>
 I will leave the rest of the novel to you, reader, to find out. I hope you end up in the timeline where you make the effort to find out what happens in the end.<br><br>
 This short story masterfully explores complex themes of determinism, free will, and the multitudinous nature of reality.
+
+Ok this post was written with the help of chatgpt and I can't help but feel its devoid of .. humanity? feels cold and boring and easily glazed over. lol.

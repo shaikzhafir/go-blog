@@ -2,13 +2,14 @@ package markdownHandler
 
 import (
 	"bytes"
-	"fmt"
 	"html/template"
 	log "htmx-blog/logging"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/yuin/goldmark"
 	meta "github.com/yuin/goldmark-meta"
@@ -30,6 +31,14 @@ func NewHandler() MarkdownHandler {
 }
 
 type markdownHandler struct {
+}
+
+type BlogPost struct {
+	Title        string
+	Slug         string
+	PublishedStr string
+	Published    time.Time
+	Content      template.HTML
 }
 
 func (h *markdownHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +72,10 @@ func (h *markdownHandler) GetReviewsList() http.HandlerFunc {
 				),
 			),
 		)
+
+		blogPosts := []BlogPost{}
 		filepath.WalkDir("./reviews", func(path string, d os.DirEntry, err error) error {
+
 			if err != nil {
 				w.Write([]byte(err.Error()))
 				return err
@@ -77,19 +89,45 @@ func (h *markdownHandler) GetReviewsList() http.HandlerFunc {
 			}
 			document := markdown.Parser().Parse(text.NewReader(mdfile))
 			metaData := document.OwnerDocument().Meta()
-			title := metaData["Title"]
-			slug := metaData["Slug"]
-			pubDate := metaData["Published"]
-			w.Write([]byte(fmt.Sprintf(`
-			<div class="my-2">
-			<a href="/reviews/%s">
-			<p class="font-bold text-2xl">%v</p>
-			<p>%v</p>
-			</a>
-			</div>
-			`, slug, title, pubDate)))
+			title := metaData["Title"].(string)
+			slug := metaData["Slug"].(string)
+			pubDate := metaData["Published"].(string)
+			pubDateTime, err := time.Parse("2-1-2006", pubDate)
+			if err != nil {
+				log.Error(err.Error(), err)
+				pubDateTime = time.Now()
+			}
+
+			blogPosts = append(blogPosts, BlogPost{
+				Title:     title,
+				Slug:      slug,
+				Published: pubDateTime,
+				Content:   template.HTML(mdfile),
+			})
+
 			return nil
 		})
+
+		// sort the list of reviews by date
+		// write the list of reviews to the page
+		// return the page
+
+		tmpl, err := template.ParseFiles("./templates/blogEntry.html")
+		if err != nil {
+			w.Write([]byte(err.Error()))
+		}
+
+		sort.Slice(blogPosts, func(i, j int) bool {
+			return blogPosts[i].Published.After(blogPosts[j].Published)
+		})
+
+		for _, blogPost := range blogPosts {
+			blogPost.PublishedStr = blogPost.Published.Format("2-January-2006")
+			err = tmpl.Execute(w, blogPost)
+			if err != nil {
+				w.Write([]byte(err.Error()))
+			}
+		}
 	}
 }
 

@@ -563,9 +563,9 @@ body {
   --tw-backdrop-sepia:  ;
 }
 
-.mx-20 {
-  margin-left: 5rem;
-  margin-right: 5rem;
+.mx-5 {
+  margin-left: 1.25rem;
+  margin-right: 1.25rem;
 }
 
 .my-2 {
@@ -599,6 +599,10 @@ body {
   text-align: center;
 }
 
+.font-geist {
+  font-family: geist, sans-serif;
+}
+
 .text-2xl {
   font-size: 1.5rem;
   line-height: 2rem;
@@ -623,9 +627,10 @@ body {
   color: rgb(34 197 94 / var(--tw-text-opacity));
 }
 
-.text-gray-500 {
-  --tw-text-opacity: 1;
-  color: rgb(107 114 128 / var(--tw-text-opacity));
+@font-face {
+  font-family: 'geist';
+
+  src: url("./public/fonts/Geist-Regular.otf");
 }
 
 @media (min-width: 1280px) {
