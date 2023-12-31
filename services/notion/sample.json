@@ -1,0 +1,300 @@
+{
+    "object": "list",
+    "results": [
+        {
+            "object": "block",
+            "id": "13e44521-b202-4549-bf72-e3a96a97096a",
+            "parent": {
+                "type": "page_id",
+                "page_id": "275644fb-846e-4964-b558-a9c045b785e6"
+            },
+            "created_time": "2023-12-14T15:00:00.000Z",
+            "last_edited_time": "2023-12-14T15:00:00.000Z",
+            "created_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "last_edited_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "has_children": false,
+            "archived": false,
+            "type": "image",
+            "image": {
+                "caption": [],
+                "type": "file",
+                "file": {
+                    "url": "https://prod-files-secure.s3.us-west-2.amazonaws.com/0eb7a021-3d1a-4ae9-8cc2-40ffe2a8b0b5/0db665c2-6d00-458e-a05b-221779d896c8/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAT73L2G45HZZMZUHI%2F20231229%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20231229T084422Z&X-Amz-Expires=3600&X-Amz-Signature=5c474e502233f65d78ea71c69e8413daef978dc1ced47e0cbc0496bce9631623&X-Amz-SignedHeaders=host&x-id=GetObject",
+                    "expiry_time": "2023-12-29T09:44:22.621Z"
+                }
+            }
+        },
+        {
+            "object": "block",
+            "id": "8ce0d0b8-849b-4172-b87e-7121dfce1873",
+            "parent": {
+                "type": "page_id",
+                "page_id": "275644fb-846e-4964-b558-a9c045b785e6"
+            },
+            "created_time": "2023-12-14T15:03:00.000Z",
+            "last_edited_time": "2023-12-14T15:03:00.000Z",
+            "created_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "last_edited_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "has_children": false,
+            "archived": false,
+            "type": "heading_1",
+            "heading_1": {
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "Summary",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "Summary",
+                        "href": null
+                    }
+                ],
+                "is_toggleable": false,
+                "color": "default"
+            }
+        },
+        {
+            "object": "block",
+            "id": "ba2824ba-198e-4fd1-9d9c-7f51813bf622",
+            "parent": {
+                "type": "page_id",
+                "page_id": "275644fb-846e-4964-b558-a9c045b785e6"
+            },
+            "created_time": "2023-12-14T15:03:00.000Z",
+            "last_edited_time": "2023-12-14T15:09:00.000Z",
+            "created_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "last_edited_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "has_children": false,
+            "archived": false,
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "An unfulfilled college student hurtles through four parallel realities to explore the what-might've-been and the what-should-never-be in this Groundhog Day meets The Midnight Library–esque novel from one of Japan’s most popular authors.",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "An unfulfilled college student hurtles through four parallel realities to explore the what-might've-been and the what-should-never-be in this Groundhog Day meets The Midnight Library–esque novel from one of Japan’s most popular authors.",
+                        "href": null
+                    }
+                ],
+                "color": "default"
+            }
+        },
+        {
+            "object": "block",
+            "id": "fc169100-e3c8-4855-b98b-ddd3fdee4302",
+            "parent": {
+                "type": "page_id",
+                "page_id": "275644fb-846e-4964-b558-a9c045b785e6"
+            },
+            "created_time": "2023-12-14T15:11:00.000Z",
+            "last_edited_time": "2023-12-14T15:12:00.000Z",
+            "created_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "last_edited_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "has_children": false,
+            "archived": false,
+            "type": "heading_1",
+            "heading_1": {
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "Thoughts",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "Thoughts",
+                        "href": null
+                    }
+                ],
+                "is_toggleable": false,
+                "color": "default"
+            }
+        },
+        {
+            "object": "block",
+            "id": "71f2db0a-53ec-46aa-932f-6e30fded6cdf",
+            "parent": {
+                "type": "page_id",
+                "page_id": "275644fb-846e-4964-b558-a9c045b785e6"
+            },
+            "created_time": "2023-12-14T15:12:00.000Z",
+            "last_edited_time": "2023-12-14T15:18:00.000Z",
+            "created_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "last_edited_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "has_children": false,
+            "archived": false,
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "First saw this story as an anime back in like 2013? The way the story is broken into 4 chapters (and the author supposedly writing them all in parallel and going back and forth to the other paths when he gets stuck) is super cool. Seeing how the parallel paths “touch” each other is crazy as well",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "First saw this story as an anime back in like 2013? The way the story is broken into 4 chapters (and the author supposedly writing them all in parallel and going back and forth to the other paths when he gets stuck) is super cool. Seeing how the parallel paths “touch” each other is crazy as well",
+                        "href": null
+                    }
+                ],
+                "color": "default"
+            }
+        },
+        {
+            "object": "block",
+            "id": "e6efc2f2-9388-4486-97c0-78eec005433d",
+            "parent": {
+                "type": "page_id",
+                "page_id": "275644fb-846e-4964-b558-a9c045b785e6"
+            },
+            "created_time": "2023-12-14T15:18:00.000Z",
+            "last_edited_time": "2023-12-14T15:23:00.000Z",
+            "created_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "last_edited_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "has_children": false,
+            "archived": false,
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "For example, the narrator gets his underwear in the washing machine swapped with a parallel path version who was washing his stuffed toy. ",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "For example, the narrator gets his underwear in the washing machine swapped with a parallel path version who was washing his stuffed toy. ",
+                        "href": null
+                    }
+                ],
+                "color": "default"
+            }
+        },
+        {
+            "object": "block",
+            "id": "59a55bfb-7083-4dc7-acbf-782a0f217caa",
+            "parent": {
+                "type": "page_id",
+                "page_id": "275644fb-846e-4964-b558-a9c045b785e6"
+            },
+            "created_time": "2023-12-14T15:24:00.000Z",
+            "last_edited_time": "2023-12-14T16:13:00.000Z",
+            "created_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "last_edited_by": {
+                "object": "user",
+                "id": "5e0efd62-9e69-483a-a023-aa3a00ec123c"
+            },
+            "has_children": false,
+            "archived": false,
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "The main theme of the story to me is more of; when faced with so many possibilities in life, just chill and don’t worry or obsess too much about which path you choose. Sometimes, time or perspective is what’s needed. Just give it your all, be bold, and take calculated risks. At least, this is what I gathered from the novel. ",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "The main theme of the story to me is more of; when faced with so many possibilities in life, just chill and don’t worry or obsess too much about which path you choose. Sometimes, time or perspective is what’s needed. Just give it your all, be bold, and take calculated risks. At least, this is what I gathered from the novel. ",
+                        "href": null
+                    }
+                ],
+                "color": "default"
+            }
+        }
+    ],
+    "next_cursor": null,
+    "has_more": false,
+    "type": "block",
+    "block": {},
+    "developer_survey": "https://notionup.typeform.com/to/bllBsoI4?utm_source=postman",
+    "request_id": "7c0c8b9a-7d01-4b9a-a0ce-bafe0e577cc4"
+}

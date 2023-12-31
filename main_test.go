@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"htmx-blog/markdownHandler"
+	"htmx-blog/handlers/markdownHandler"
 )
 
 func TestGetReviewsList(t *testing.T) {

@@ -5,16 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://unpkg.com/htmx.org/dist/htmx.js"></script>
     <link href="/static/output.css" type="text/css" rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/tokyo-night-dark.min.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>
+      // Handle the htmx afterRequest event to load highlight.js
+      document.addEventListener("htmx:afterRequest", function (event) {
+        hljs.highlightAll();
+      });
+    </script>
     <title>get out of here!</title>
   </head>
   <body>
     <div class="py-20 mx-5 xl:mx-80 bg-slate-500 mb-10 font-geist">
-      <p class="text-3xl my-2 text-green-500">welcome to szhafir blog</p>
-      <h1>Posts from Notion</h1>
+      <a href="/">
+        <p class="text-3xl my-2 text-green-500">welcome to szhafir blog</p>
+      </a>
       <div
-        id="notionPosts"
-        class="h-full"
-        hx-get="/notion/posts"
+        id="teehee"
+        hx-get="/notion/content/{{.}}"
         hx-swap="innerHTML"
         hx-trigger="load"
       >
@@ -22,17 +33,9 @@
           loading... notion api is slow.. give chance..
         </div>
       </div>
-      <h1>Old school markdown</h1>
-      <div
-        id="reviews"
-        class="h-full"
-        hx-get="/reviews"
-        hx-swap="innerHTML"
-        hx-trigger="load"
-      ></div>
     </div>
   </body>
-  <footer class="text-center text-xs">
+  <footer class="text-center text-xs pb-5">
     <p>© 2023 szhafir</p>
     <p>Powered by htmx, tailwind and go</p>
   </footer>

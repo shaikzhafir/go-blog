@@ -33,3 +33,6 @@
     }
   }
 
+  [data-loading] {
+    display: none;
+  }
