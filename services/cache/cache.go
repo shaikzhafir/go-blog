@@ -3,9 +3,11 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	log "htmx-blog/logging"
 	"htmx-blog/services/notion"
 	"os"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -14,25 +16,45 @@ type Cache interface {
 	Get(key string) ([]byte, error)
 	Set(key string, value []byte) error
 	GetSlugEntries(ctx context.Context, key string) ([]notion.SlugEntry, error)
+	GetPostByID(ctx context.Context, key string) ([]json.RawMessage, error)
 }
 
-func NewCache(redis *redis.Client) Cache {
+func NewCache(redis *redis.Client, nc notion.NotionClient) Cache {
 	if os.Getenv("DEV") == "true" {
 		return NewInMemoryCache()
 	}
-	return cache{redisClient: redis}
+	return &cache{redisClient: redis, notionClient: nc}
 }
 
 type inMemoryCache struct {
 }
 
+func NewInMemoryCache() Cache {
+	return inMemoryCache{}
+}
+
+// GetPostByID implements Cache.
+func (imc inMemoryCache) GetPostByID(ctx context.Context, key string) ([]json.RawMessage, error) {
+	file, err := os.Open("./local/sampleData/notionPost.json")
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	var response notion.QueryBlockChildrenResponse
+	err = json.NewDecoder(file).Decode(&response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Results, nil
+}
+
 // Get implements Cache.
-func (inMemoryCache) Get(key string) ([]byte, error) {
+func (imc inMemoryCache) Get(key string) ([]byte, error) {
 	panic("unimplemented")
 }
 
 // Get implements Cache.
-func (inMemoryCache) GetSlugEntries(ctx context.Context, key string) ([]notion.SlugEntry, error) {
+func (imc inMemoryCache) GetSlugEntries(ctx context.Context, key string) ([]notion.SlugEntry, error) {
 	file, err := os.Open("./local/sampleData/posts.json")
 	if err != nil {
 		return nil, err
@@ -72,12 +94,70 @@ func (inMemoryCache) GetSlugEntries(ctx context.Context, key string) ([]notion.S
 }
 
 // Set implements Cache.
-func (inMemoryCache) Set(key string, value []byte) error {
+func (imc inMemoryCache) Set(key string, value []byte) error {
 	panic("unimplemented")
 }
 
 type cache struct {
-	redisClient *redis.Client
+	redisClient  *redis.Client
+	notionClient notion.NotionClient
+}
+
+// GetPostByID implements Cache.
+func (c *cache) GetPostByID(ctx context.Context, key string) ([]json.RawMessage, error) {
+	exists, err := c.redisClient.Exists(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+	if exists == 1 {
+		// get cached content from redis
+		cachedJSON, err := c.redisClient.Get(ctx, key).Bytes()
+		if err != nil {
+			return nil, err
+		}
+		var deserialized []json.RawMessage
+		err = json.Unmarshal(cachedJSON, &deserialized)
+		if err != nil {
+			log.Error("Failed to deserialize: %v", err)
+		}
+
+		/* timestamp, err := c.redisClient.Get(ctx, key+"-timestamp").Time()
+		// if error is that the key doesnt exist, we should add it
+		if err == redis.Nil {
+			c.redisClient.Set(ctx, key+"-timestamp", time.Now(), 0)
+		}
+		if err != nil {
+			log.Error("error getting timestamp: %v", err)
+		}
+		// if timestamp is more than 1 hour ago, update cache
+		if time.Since(timestamp) > time.Hour {
+			// update cache
+			err = n.StoreOrUpdateCacheBlockChildren(ctx, key)
+			if err != nil {
+				log.Error("error storing or updating cache: %v", err)
+			}
+			return
+		} */
+		return deserialized, nil
+	}
+
+	// doesnt exist, get from notion and store in cache
+	rawBlocks, err := c.notionClient.GetBlockChildren(key)
+	if err != nil {
+		return nil, fmt.Errorf("error getting block children: %v", err)
+	}
+	// write to redis cache
+	// Serialize the slice of json.RawMessage
+	serialized, err := json.Marshal(rawBlocks)
+	if err != nil {
+		log.Error("error marshalling rawblocks: %v", err)
+	}
+	// Storing the serialized data in Redis
+	err = c.redisClient.Set(ctx, key, serialized, 0).Err()
+	if err != nil {
+		log.Error("Failed to set key: %v", err)
+	}
+	return rawBlocks, nil
 }
 
 // GetSlugEntries implements Cache.
@@ -109,6 +189,29 @@ func (c *cache) GetSlugEntries(ctx context.Context, key string) ([]notion.SlugEn
 
 		// if timestamp is more than 1 hour ago, update cache
 	}
+
+	// fetch notion block
+	rawBlocks, err := c.notionClient.GetSlugEntries(key)
+	if err != nil {
+		return nil, fmt.Errorf("error getting block children: %v", err)
+	}
+	// write to redis cache
+	// Serialize the slice of json.RawMessage
+	serialized, err := json.Marshal(rawBlocks)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling rawblocks: %v", err)
+	}
+	err = c.redisClient.Set(ctx, key, serialized, 0).Err()
+	if err != nil {
+		return nil, fmt.Errorf("error setting key: %v", err)
+	}
+	// also store timestamp
+	currentTime := time.Now()
+	err = c.redisClient.Set(ctx, key+"-timestamp", currentTime, 0).Err()
+	if err != nil {
+		return nil, fmt.Errorf("error setting key: %v", err)
+	}
+	return rawBlocks, nil
 }
 
 // Get implements Cache.
@@ -119,8 +222,4 @@ func (cache) Get(key string) ([]byte, error) {
 // Set implements Cache.
 func (cache) Set(key string, value []byte) error {
 	panic("unimplemented")
-}
-
-func NewInMemoryCache() Cache {
-	return inMemoryCache{}
 }

@@ -35,7 +35,7 @@ func main() {
 	mux.HandleFunc("/reviews/", handler.GetReviewByTitle())
 	mux.HandleFunc("/blogposts", handler.GetBlogList())
 	mux.HandleFunc("/notion/posts", notionHandler.GetAllPosts())
-	mux.HandleFunc("/notion/posts/", notionHandler.RenderSinglePostPage())
+	mux.HandleFunc("/notion/posts/", notionHandler.RenderPostHTML())
 	mux.HandleFunc("/notion/content/", notionHandler.GetSinglePost())
 	mux.Handle("/", indexFs)
 
