@@ -24,3 +24,5 @@ tailwindcss
 htmx.min.js
 .env
 htmx-blog
+
+local
