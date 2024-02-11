@@ -35,23 +35,23 @@ func NewHandler(notionClient notion.NotionClient, redisClient *redis.Client) Not
 	return &notionHandler{
 		notionClient: notionClient,
 		redisClient:  redisClient,
-		cache:        cache.NewCache(redisClient),
+		cache:        cache.NewCache(redisClient, notionClient),
 	}
 }
 
 type NotionHandler interface {
 	GetAllPosts() http.HandlerFunc
 	GetSinglePost() http.HandlerFunc
-	RenderSinglePostPage() http.HandlerFunc
+	RenderPostHTML() http.HandlerFunc
 }
 
 // GetAllPosts implements NotionHandler.
 func (n *notionHandler) GetAllPosts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		databaseID := n.notionClient.GetDatabaseID()
-		// check if slugentries exist in redis cache
-		// if it does, return the cached html
-		slugEntries, err := n.cache.GetSlugEntries(databaseID)
+
+		// cache logic is handled internally in the cache package
+		slugEntries, err := n.cache.GetSlugEntries(r.Context(), databaseID)
 		if err != nil {
 			log.Error("error getting slug entries: %v", err)
 			w.Write([]byte("error getting slug entries"))
@@ -64,7 +64,7 @@ func (n *notionHandler) GetAllPosts() http.HandlerFunc {
 	}
 }
 
-func (n *notionHandler) RenderSinglePostPage() http.HandlerFunc {
+func (n *notionHandler) RenderPostHTML() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// get post id from request
 		// TODO the blockID will be the slug name, and conversion of slug name to blockID done here
@@ -94,95 +94,28 @@ func (n *notionHandler) GetSinglePost() http.HandlerFunc {
 		path := r.URL.Path
 		segments := strings.Split(path, "/")
 		blockID := segments[len(segments)-1]
+
+		deserialized, err := n.cache.GetPostByID(ctx, blockID)
+		if err != nil {
+			log.Error("error getting post by id: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		for _, rawBlock := range deserialized {
+			err := n.notionClient.ParseAndWriteNotionBlock(w, rawBlock)
+			if err != nil {
+				w.Write([]byte("error parsing block oopsie"))
+			}
+		}
+
 		// get post from notion
 		// it should return a list of rawblocks
 
 		// first check if blockID exists in redis cache
 		// if it does, return the cached html
 		// if it doesn't, get the rawblocks from notion
-		exists, err := n.redisClient.Exists(ctx, blockID).Result()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		if exists == 1 {
-			// get cached content from redis
-			cachedJSON, err := n.redisClient.Get(ctx, blockID).Bytes()
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			var deserialized []json.RawMessage
-			err = json.Unmarshal(cachedJSON, &deserialized)
-			if err != nil {
-				log.Error("Failed to deserialize: %v", err)
-			}
 
-			for _, rawBlock := range deserialized {
-				err := n.notionClient.ParseAndWriteNotionBlock(w, rawBlock)
-				if err != nil {
-					w.Write([]byte("error parsing block oopsie"))
-				}
-			}
-			// check expiry of cached content
-			// if expired, update cache
-			// if not expired, do nothing
-			timestamp, err := n.redisClient.Get(ctx, blockID+"-timestamp").Time()
-			// if error is that the key doesnt exist, we should add it
-			if err == redis.Nil {
-				n.redisClient.Set(ctx, blockID+"-timestamp", time.Now(), 0)
-				return
-			}
-			if err != nil {
-				log.Error("error getting timestamp: %v", err)
-				return
-			}
-			// if timestamp is more than 1 hour ago, update cache
-			if time.Since(timestamp) > time.Hour {
-				// update cache
-				err = n.StoreOrUpdateCacheBlockChildren(ctx, blockID)
-				if err != nil {
-					log.Error("error storing or updating cache: %v", err)
-				}
-				return
-			}
-			return
-		}
-
-		rawBlocks, err := n.notionClient.GetBlockChildren(blockID)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		// convert post to html template!
-		for i := range rawBlocks {
-			// need to modify rawBlock if its an image block
-			var b models.Block
-			err := json.Unmarshal(rawBlocks[i], &b)
-			if err != nil {
-				log.Error("error unmarshalling rawblock: %v", err)
-			}
-			if b.Type == "image" {
-				StoreNotionImage(rawBlocks, i)
-			}
-
-			err = n.notionClient.ParseAndWriteNotionBlock(w, rawBlocks[i])
-			if err != nil {
-				w.Write([]byte("error parsing block oopsie"))
-			}
-		}
-		// write to redis cache
-		// Serialize the slice of json.RawMessage
-		serialized, err := json.Marshal(rawBlocks)
-		if err != nil {
-			log.Error("error marshalling rawblocks: %v", err)
-		}
-
-		// Storing the serialized data in Redis
-		err = n.redisClient.Set(ctx, blockID, serialized, 0).Err()
-		if err != nil {
-			log.Error("Failed to set key: %v", err)
-		}
 	}
 }
 
