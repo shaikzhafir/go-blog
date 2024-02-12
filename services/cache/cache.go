@@ -104,60 +104,37 @@ type cache struct {
 }
 
 // GetPostByID implements Cache.
-func (c *cache) GetPostByID(ctx context.Context, key string) ([]json.RawMessage, error) {
-	exists, err := c.redisClient.Exists(ctx, key).Result()
-	if err != nil {
+func (c *cache) GetPostByID(ctx context.Context, key string) (rawBlocks []json.RawMessage, err error) {
+	cachedJSON, err := c.redisClient.Get(ctx, key).Bytes()
+	if err != nil && err != redis.Nil {
 		return nil, err
 	}
-	if exists == 1 {
-		// get cached content from redis
-		cachedJSON, err := c.redisClient.Get(ctx, key).Bytes()
+	if err == redis.Nil {
+		// doesnt exist, get from notion and store in cache
+		rawBlocks, err := c.notionClient.GetBlockChildren(key)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error getting block children: %v", err)
 		}
-		var deserialized []json.RawMessage
-		err = json.Unmarshal(cachedJSON, &deserialized)
+		// write to redis cache
+		// Serialize the slice of json.RawMessage
+		cachedJSON, err = json.Marshal(rawBlocks)
 		if err != nil {
-			log.Error("Failed to deserialize: %v", err)
+			log.Error("error marshalling rawblocks: %v", err)
 		}
-
-		/* timestamp, err := c.redisClient.Get(ctx, key+"-timestamp").Time()
-		// if error is that the key doesnt exist, we should add it
-		if err == redis.Nil {
-			c.redisClient.Set(ctx, key+"-timestamp", time.Now(), 0)
-		}
+		// Storing the serialized data in Redis
+		err = c.redisClient.Set(ctx, key, cachedJSON, 0).Err()
 		if err != nil {
-			log.Error("error getting timestamp: %v", err)
+			log.Error("Failed to set key: %v", err)
 		}
-		// if timestamp is more than 1 hour ago, update cache
-		if time.Since(timestamp) > time.Hour {
-			// update cache
-			err = n.StoreOrUpdateCacheBlockChildren(ctx, key)
-			if err != nil {
-				log.Error("error storing or updating cache: %v", err)
-			}
-			return
-		} */
-		return deserialized, nil
 	}
 
-	// doesnt exist, get from notion and store in cache
-	rawBlocks, err := c.notionClient.GetBlockChildren(key)
+	var deserialized []json.RawMessage
+	err = json.Unmarshal(cachedJSON, &deserialized)
 	if err != nil {
-		return nil, fmt.Errorf("error getting block children: %v", err)
+		return nil, fmt.Errorf("failed to deserialize: %v", err)
 	}
-	// write to redis cache
-	// Serialize the slice of json.RawMessage
-	serialized, err := json.Marshal(rawBlocks)
-	if err != nil {
-		log.Error("error marshalling rawblocks: %v", err)
-	}
-	// Storing the serialized data in Redis
-	err = c.redisClient.Set(ctx, key, serialized, 0).Err()
-	if err != nil {
-		log.Error("Failed to set key: %v", err)
-	}
-	return rawBlocks, nil
+	// go c.UpdateCache(ctx, key)
+	return deserialized, nil
 }
 
 // GetSlugEntries implements Cache.
@@ -222,4 +199,21 @@ func (cache) Get(key string) ([]byte, error) {
 // Set implements Cache.
 func (cache) Set(key string, value []byte) error {
 	panic("unimplemented")
+}
+
+func (c *cache) UpdateCache(ctx context.Context, key string) {
+	// handle timestamp to check whether to update cache
+	timestamp, err := c.redisClient.Get(ctx, key+"-timestamp").Time()
+	// if error is that the key doesn't exist, we should add it
+	if err == redis.Nil {
+		c.redisClient.Set(ctx, key+"-timestamp", time.Now(), 0)
+	}
+	if err != nil {
+		log.Error("error getting timestamp: %v", err)
+	}
+	// if timestamp is more than 1 hour ago, update cache
+	if time.Since(timestamp) > time.Hour {
+		// TODO update cache here
+		return // Add return statement to fix empty branch issue
+	}
 }
