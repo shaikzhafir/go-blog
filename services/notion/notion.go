@@ -90,7 +90,8 @@ type QueryDBResponse struct {
 }
 
 type QueryBlockChildrenResponse struct {
-	Object     string            `json:"object"`
+	Object string `json:"object"`
+	// its only rawmessage because we need to iterate
 	Results    []json.RawMessage `json:"results"`
 	Type       string            `json:"type"`
 	NextCursor string            `json:"next_cursor"`
