@@ -127,6 +127,7 @@ func (c *cache) GetPostByID(ctx context.Context, key string) (rawBlocks []json.R
 		return nil, fmt.Errorf("failed to deserialize: %v", err)
 	}
 	go func() {
+		ctx := context.Background()
 		shouldUpdate := c.ShouldUpdateCache(ctx, key)
 		if shouldUpdate {
 			_, err := c.UpdateBlockChildrenCache(ctx, key)
@@ -160,6 +161,7 @@ func (c *cache) GetSlugEntries(ctx context.Context, key string) ([]notion.SlugEn
 		log.Error("Failed to deserialize: %v", err)
 	}
 	go func() {
+		ctx := context.Background()
 		shouldUpdate := c.ShouldUpdateCache(ctx, key)
 		if shouldUpdate {
 			_, err := c.UpdateSlugEntriesCache(ctx, key)
