@@ -50,7 +50,14 @@ func (*mockNotionClient) GetPage(pageID string) (models.Page, error) {
 
 // GetSlugEntries implements notion.NotionClient.
 func (*mockNotionClient) GetSlugEntries(databaseID string) ([]notion.SlugEntry, error) {
-	panic("unimplemented")
+	return []notion.SlugEntry{
+		{
+			Slug:        "test",
+			ID:          "test",
+			CreatedTime: "test",
+			Title:       "test",
+		},
+	}, nil
 }
 
 // ParseAndWriteNotionBlock implements notion.NotionClient.
