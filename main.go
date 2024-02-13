@@ -38,6 +38,10 @@ func main() {
 	mux.HandleFunc("/notion/posts/", notionHandler.RenderPostHTML())
 	mux.HandleFunc("/notion/content/", notionHandler.GetSinglePost())
 	mux.Handle("/", indexFs)
-
-	log.Fatal("server died", http.ListenAndServe("localhost:3000", mux))
+	localAddress := "localhost:3000"
+	if os.Getenv("PROD") == "true" {
+		localAddress = os.Getenv("PROD_ADDRESS")
+	}
+	log.Info("server started on %s", localAddress)
+	log.Fatal("server died", http.ListenAndServe(localAddress, mux))
 }
