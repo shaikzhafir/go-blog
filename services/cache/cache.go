@@ -129,16 +129,12 @@ func (c *cache) GetPostByID(ctx context.Context, key string) (rawBlocks []json.R
 	}
 	go func() {
 		ctx := context.Background()
-		log.Info("running on goroutine to check if should update cache")
 		shouldUpdate := c.ShouldUpdateCache(ctx, key)
 		if shouldUpdate {
-			log.Info("updating cache")
 			_, err := c.UpdateBlockChildrenCache(ctx, key)
 			if err != nil {
 				log.Error("error updating cache: %v", err)
 			}
-		} else {
-			log.Info("no need to update cache")
 		}
 	}()
 	return deserialized, nil
@@ -183,12 +179,6 @@ func (c *cache) UpdateBlockChildrenCache(ctx context.Context, key string) ([]byt
 	if err != nil {
 		return nil, fmt.Errorf("error getting block children: %v", err)
 	}
-	// write to redis cache
-	// Serialize the slice of json.RawMessage
-	cachedJSON, err := json.Marshal(rawBlocks)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling rawblocks: %v", err)
-	}
 	// update the image url
 	for i := range rawBlocks {
 		// need to modify rawBlock if its an image block
@@ -198,13 +188,18 @@ func (c *cache) UpdateBlockChildrenCache(ctx context.Context, key string) ([]byt
 			log.Error("error unmarshalling rawblock: %v", err)
 			continue
 		}
-		log.Info("block is: %+v", b)
 		if b.Type == "image" {
 			err = notion.StoreNotionImage(rawBlocks, i)
 			if err != nil {
 				log.Error("error storing notion image: %v", err)
 			}
 		}
+	}
+	// after storing images, write to redis cache
+	// Serialize the slice of json.RawMessage
+	cachedJSON, err := json.Marshal(rawBlocks)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling rawblocks: %v", err)
 	}
 	err = c.UpdateCache(ctx, key, cachedJSON)
 	if err != nil {
