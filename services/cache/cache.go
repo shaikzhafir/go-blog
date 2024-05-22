@@ -129,12 +129,16 @@ func (c *cache) GetPostByID(ctx context.Context, key string) (rawBlocks []json.R
 	}
 	go func() {
 		ctx := context.Background()
+		log.Info("running on goroutine to check if should update cache")
 		shouldUpdate := c.ShouldUpdateCache(ctx, key)
 		if shouldUpdate {
+			log.Info("updating cache")
 			_, err := c.UpdateBlockChildrenCache(ctx, key)
 			if err != nil {
 				log.Error("error updating cache: %v", err)
 			}
+		} else {
+			log.Info("no need to update cache")
 		}
 	}()
 	return deserialized, nil
@@ -194,6 +198,7 @@ func (c *cache) UpdateBlockChildrenCache(ctx context.Context, key string) ([]byt
 			log.Error("error unmarshalling rawblock: %v", err)
 			continue
 		}
+		log.Info("block is: %+v", b)
 		if b.Type == "image" {
 			err = notion.StoreNotionImage(rawBlocks, i)
 			if err != nil {
