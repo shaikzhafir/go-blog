@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -26,12 +25,12 @@ type notionHandler struct {
 }
 
 func NewHandler(notionClient notion.NotionClient, redisClient *redis.Client) NotionHandler {
-	if os.Getenv("DEV") == "true" {
+	/* if os.Getenv("DEV") == "true" {
 		return &notionHandler{
 			notionClient: notionClient,
 			cache:        cache.NewInMemoryCache(),
 		}
-	}
+	} */
 	return &notionHandler{
 		notionClient: notionClient,
 		redisClient:  redisClient,
@@ -48,10 +47,11 @@ type NotionHandler interface {
 // GetAllPosts implements NotionHandler.
 func (n *notionHandler) GetAllPosts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		filter := r.PathValue("filter")
 		databaseID := n.notionClient.GetDatabaseID()
 
 		// cache logic is handled internally in the cache package
-		slugEntries, err := n.cache.GetSlugEntries(r.Context(), databaseID)
+		slugEntries, err := n.cache.GetSlugEntries(r.Context(), databaseID, filter)
 		if err != nil {
 			log.Error("error getting slug entries: %v", err)
 			w.Write([]byte("error getting slug entries"))
@@ -119,71 +119,6 @@ func (n *notionHandler) GetSinglePost() http.HandlerFunc {
 	}
 }
 
-// update or store in redis cache
-func (n *notionHandler) StoreOrUpdateCacheBlockChildren(ctx context.Context, key string) error {
-	// fetch notion block
-	rawBlocks, err := n.notionClient.GetBlockChildren(key)
-	if err != nil {
-		log.Error("error getting block children: %v", err)
-	}
-	// update the image url
-	// convert post to html template!
-	for i := range rawBlocks {
-		// need to modify rawBlock if its an image block
-		var b models.Block
-		err := json.Unmarshal(rawBlocks[i], &b)
-		if err != nil {
-			log.Error("error unmarshalling rawblock: %v", err)
-		}
-		if b.Type == "image" {
-			StoreNotionImage(rawBlocks, i)
-		}
-	}
-	// write to redis cache
-	// Serialize the slice of json.RawMessage
-	serialized, err := json.Marshal(rawBlocks)
-	if err != nil {
-		log.Error("error marshalling rawblocks: %v", err)
-	}
-	err = n.redisClient.Set(ctx, key, serialized, 0).Err()
-	if err != nil {
-		return err
-	}
-	// also store timestamp
-	currentTime := time.Now()
-	err = n.redisClient.Set(ctx, key+"-timestamp", currentTime, 0).Err()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// StoreOrUpdateCacheQueryDB stores or updates the cache with the query database (slug entries)
-func (n *notionHandler) StoreOrUpdateCacheQueryDB(ctx context.Context, key string) ([]notion.SlugEntry, error) {
-	// fetch notion block
-	rawBlocks, err := n.notionClient.GetSlugEntries(key)
-	if err != nil {
-		return nil, fmt.Errorf("error getting block children: %v", err)
-	}
-	// write to redis cache
-	// Serialize the slice of json.RawMessage
-	serialized, err := json.Marshal(rawBlocks)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling rawblocks: %v", err)
-	}
-	err = n.redisClient.Set(ctx, key, serialized, 0).Err()
-	if err != nil {
-		return nil, fmt.Errorf("error setting key: %v", err)
-	}
-	// also store timestamp
-	currentTime := time.Now()
-	err = n.redisClient.Set(ctx, key+"-timestamp", currentTime, 0).Err()
-	if err != nil {
-		return nil, fmt.Errorf("error setting key: %v", err)
-	}
-	return rawBlocks, nil
-}
-
 // StoreNotionImage stores the image locally and updates the rawBlock with the new image url
 // first it will get the existing fresh image url from notion aws image url
 // then it will download the image from the aws image url
@@ -249,30 +184,6 @@ func WriteNotionSlugEntriesToHTML(ctx context.Context, w http.ResponseWriter, sl
 			// dont have to return error here, just log it as maybe some posts have issues
 			log.Error("error executing template for specific entry: %v", err)
 		}
-	}
-	return nil
-}
-
-// CheckExpiryAndUpdateExpiryCache checks if the cached content is expired
-// if it is expired, it will update the cache with a new expiry cache entry for that blockID
-func (n *notionHandler) CheckExpiryAndUpdateExpiryCache(ctx context.Context, key string) error {
-	// check expiry of cached content
-	// if expired, update cache
-	// if not expired, do nothing
-	timestamp, err := n.redisClient.Get(ctx, key+"-timestamp").Time()
-	if err != nil {
-		log.Error("error getting timestamp: %v", err)
-		return err
-	}
-	// if timestamp is more than 1 hour ago, update cache
-	if time.Since(timestamp) > time.Hour {
-		// update cache
-		_, err = n.StoreOrUpdateCacheQueryDB(ctx, key)
-		if err != nil {
-			log.Error("error storing or updating cache: %v", err)
-			return err
-		}
-		return nil
 	}
 	return nil
 }

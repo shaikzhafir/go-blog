@@ -13,16 +13,11 @@
   <div class="py-20 mx-5 xl:mx-80 bg-slate-500 mb-10 font-geist">
     <p class="text-3xl my-2 text-green-500">welcome to szhafir blog</p>
     <div class="grid grid-cols-4">
-      <div>book1</div>
-      <div>book2</div>
-      <div>book3</div>
-      <div>book4</div>
-      <div>book5</div>
     </div>
-    <div class="grid grid-cols-2">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
       <div>
         <h1>Book Reviews</h1>
-        <div id="notionPosts" class="h-full" hx-get="/notion/posts" hx-swap="innerHTML" hx-trigger="load">
+        <div id="book-reviews" class="h-full" hx-get="/notion/allposts/book-reviews" hx-swap="innerHTML" hx-trigger="load">
           <div class="htmx-indicator">
             loading... notion api is slow.. give chance..
           </div>
@@ -31,14 +26,18 @@
       <div>
         <div>
           <h1>Coding Posts</h1>
-          <div id="reviews" class="h-full" hx-get="/reviews" hx-swap="innerHTML" hx-trigger="load"></div>
+          <div id="coding-posts" class="h-full" hx-get="/notion/allposts/engineering" hx-swap="innerHTML" hx-trigger="load">
+            <div class="htmx-indicator">
+              loading... notion api is slow.. give chance..
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </body>
 <footer class="text-center text-xs">
-  <p>© 2023 szhafir</p>
+  <p>© 2024 szhafir</p>
   <p>Powered by htmx, tailwind and go</p>
 </footer>
 

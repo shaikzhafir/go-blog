@@ -73,7 +73,7 @@ func Test_GetSlugEntries_Cache_Hit(t *testing.T) {
 	jsonSlugEntry, _ := json.Marshal(mockSlugEntry)
 	mock.ExpectGet("test").SetVal(string(jsonSlugEntry))
 	// test getting post, this will call the notion client
-	slugEntries, err := cache.GetSlugEntries(ctx, "test")
+	slugEntries, err := cache.GetSlugEntries(ctx, "test", "")
 	assert.Nil(t, err)
 	// check that the raw block is same as the one in the mock
 	assert.Equal(t, mockSlugEntry, slugEntries)
@@ -102,7 +102,7 @@ func Test_GetSlugEntries_Cache_Miss(t *testing.T) {
 	mock.ExpectSet("test", jsonSlugEntry, 0).SetVal("OK")
 	mock.ExpectSet("test-timestamp", CurrentTime(), 0).SetVal("OK")
 	// test getting post, this will call the notion client
-	slugEntries, err := cache.GetSlugEntries(ctx, "test")
+	slugEntries, err := cache.GetSlugEntries(ctx, "test", "")
 	assert.Nil(t, err)
 	// check that the raw block is same as the one in the mock
 	assert.Equal(t, mockSlugEntry, slugEntries)

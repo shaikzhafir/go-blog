@@ -21,14 +21,14 @@ var CurrentTime = func() time.Time {
 type Cache interface {
 	Get(key string) ([]byte, error)
 	Set(key string, value []byte) error
-	GetSlugEntries(ctx context.Context, key string) ([]notion.SlugEntry, error)
+	GetSlugEntries(ctx context.Context, key string, filter string) ([]notion.SlugEntry, error)
 	GetPostByID(ctx context.Context, key string) ([]json.RawMessage, error)
 }
 
 func NewCache(redis *redis.Client, nc notion.NotionClient) Cache {
-	if os.Getenv("DEV") == "true" {
+	/* if os.Getenv("DEV") == "true" {
 		return NewInMemoryCache()
-	}
+	} */
 	return &cache{redisClient: redis, notionClient: nc}
 }
 
@@ -60,7 +60,7 @@ func (imc inMemoryCache) Get(key string) ([]byte, error) {
 }
 
 // Get implements Cache.
-func (imc inMemoryCache) GetSlugEntries(ctx context.Context, key string) ([]notion.SlugEntry, error) {
+func (imc inMemoryCache) GetSlugEntries(ctx context.Context, key string, filter string) ([]notion.SlugEntry, error) {
 	file, err := os.Open("./local/sampleData/posts.json")
 	if err != nil {
 		return nil, err
@@ -141,8 +141,9 @@ func (c *cache) GetPostByID(ctx context.Context, key string) (rawBlocks []json.R
 }
 
 // GetSlugEntries implements Cache.
-func (c *cache) GetSlugEntries(ctx context.Context, key string) ([]notion.SlugEntry, error) {
-	cachedJSON, err := c.redisClient.Get(ctx, key).Bytes()
+func (c *cache) GetSlugEntries(ctx context.Context, key string, filter string) ([]notion.SlugEntry, error) {
+	slugkey := fmt.Sprintf("%s-%s", key, filter)
+	cachedJSON, err := c.redisClient.Get(ctx, slugkey).Bytes()
 	if err != nil && err != redis.Nil {
 		// key does not exist, does not matter what the error is, we have to fetch from notion API
 		return nil, fmt.Errorf("error reading from cache: %v", err)
@@ -150,7 +151,8 @@ func (c *cache) GetSlugEntries(ctx context.Context, key string) ([]notion.SlugEn
 	// if cache miss
 	if err == redis.Nil {
 		// fetch notion block
-		cachedJSON, err = c.UpdateSlugEntriesCache(ctx, key)
+		log.Info("redis nil, fetching from notion")
+		cachedJSON, err = c.UpdateSlugEntriesCache(ctx, key, filter)
 		if err != nil {
 			return nil, fmt.Errorf("error adding to cache: %v", err)
 		}
@@ -165,7 +167,8 @@ func (c *cache) GetSlugEntries(ctx context.Context, key string) ([]notion.SlugEn
 		ctx := context.Background()
 		shouldUpdate := c.ShouldUpdateCache(ctx, key)
 		if shouldUpdate {
-			_, err := c.UpdateSlugEntriesCache(ctx, key)
+			log.Info("expired")
+			_, err := c.UpdateSlugEntriesCache(ctx, key, filter)
 			if err != nil {
 				log.Error("error updating cache: %v", err)
 			}
@@ -209,9 +212,10 @@ func (c *cache) UpdateBlockChildrenCache(ctx context.Context, key string) ([]byt
 }
 
 // UpdateSlugEntriesCache will fetch the slug entries from the notion client and update the cache
-func (c *cache) UpdateSlugEntriesCache(ctx context.Context, key string) ([]byte, error) {
+func (c *cache) UpdateSlugEntriesCache(ctx context.Context, key string, filter string) ([]byte, error) {
 	// fetch notion block
-	rawBlocks, err := c.notionClient.GetSlugEntries(key)
+	log.Info("fetching from notion")
+	rawBlocks, err := c.notionClient.GetSlugEntries(key, filter)
 	if err != nil {
 		return nil, fmt.Errorf("error getting slug entries: %v", err)
 	}
@@ -221,7 +225,8 @@ func (c *cache) UpdateSlugEntriesCache(ctx context.Context, key string) ([]byte,
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling rawblocks: %v", err)
 	}
-	err = c.UpdateCache(ctx, key, cachedJSON)
+	slugkey := fmt.Sprintf("%s-%s", key, filter)
+	err = c.UpdateCache(ctx, slugkey, cachedJSON)
 	if err != nil {
 		return nil, fmt.Errorf("error updating cache: %v", err)
 	}

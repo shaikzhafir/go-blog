@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type notionClient struct {
@@ -103,8 +104,8 @@ type NotionClient interface {
 	GetBlockChildren(blockID string) ([]json.RawMessage, error)
 	GetBlock(blockID string) (models.Block, error)
 	GetPage(pageID string) (models.Page, error)
-	GetAllPosts(databaseID string) (map[string]string, error)
-	GetSlugEntries(databaseID string) ([]SlugEntry, error)
+	GetAllPosts(databaseID string, filter string) (map[string]string, error)
+	GetSlugEntries(databaseID string, filter string) ([]SlugEntry, error)
 	GetDatabaseID() string
 	ParseAndWriteNotionBlock(writer io.Writer, rawBlock []byte) error
 }
@@ -186,16 +187,23 @@ func (nc *notionClient) GetPage(pageID string) (models.Page, error) {
 	return page, nil
 }
 
-func (nc *notionClient) GetAllPosts(databaseID string) (map[string]string, error) {
-	var body []byte
-	br := bytes.NewBuffer(body)
-	req, err := http.NewRequest("POST", "https://api.notion.com/v1/databases/"+databaseID+"/query", br)
+func (nc *notionClient) GetAllPosts(databaseID string, filter string) (map[string]string, error) {
+	bodyPayload := bytes.NewBuffer([]byte(fmt.Sprintf(`{
+		"filter": {
+		"property": "tags",
+		"multi_select": {
+			"contains": "%s"
+		}
+	}
+	}`, filter)))
+	req, err := http.NewRequest("POST", "https://api.notion.com/v1/databases/"+databaseID+"/query", bodyPayload)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+nc.NotionToken)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Notion-Version", "2022-06-28")
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -223,10 +231,16 @@ func (nc *notionClient) GetAllPosts(databaseID string) (map[string]string, error
 	return posts, nil
 }
 
-func (nc *notionClient) GetSlugEntries(databaseID string) ([]SlugEntry, error) {
-	var body []byte
-	br := bytes.NewBuffer(body)
-	req, err := http.NewRequest("POST", "https://api.notion.com/v1/databases/"+databaseID+"/query", br)
+func (nc *notionClient) GetSlugEntries(databaseID string, filter string) ([]SlugEntry, error) {
+	bodyPayload := bytes.NewBuffer([]byte(fmt.Sprintf(`{
+		"filter": {
+		"property": "tags",
+		"multi_select": {
+			"contains": "%s"
+		}
+	}
+	}`, filter)))
+	req, err := http.NewRequest("POST", "https://api.notion.com/v1/databases/"+databaseID+"/query", bodyPayload)
 	if err != nil {
 		return nil, err
 	}
@@ -253,6 +267,14 @@ func (nc *notionClient) GetSlugEntries(databaseID string) ([]SlugEntry, error) {
 		}
 		if entry.Properties.Slug.RichText[0].PlainText == "" {
 			continue
+		}
+
+		parsedTime, err := time.Parse(time.RFC3339, entry.CreatedTime)
+		if err != nil {
+			log.Error("error parsing time: %v", err)
+		} else {
+			readableFormat := "January 2, 2006 at 15:04"
+			entry.CreatedTime = parsedTime.Format(readableFormat)
 		}
 
 		slugEntry := SlugEntry{

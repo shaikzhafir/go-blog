@@ -18,7 +18,7 @@ type mockNotionClient struct {
 }
 
 // GetAllPosts implements notion.NotionClient.
-func (*mockNotionClient) GetAllPosts(databaseID string) (map[string]string, error) {
+func (*mockNotionClient) GetAllPosts(databaseID string, filter string) (map[string]string, error) {
 	panic("unimplemented")
 }
 
@@ -49,7 +49,7 @@ func (*mockNotionClient) GetPage(pageID string) (models.Page, error) {
 }
 
 // GetSlugEntries implements notion.NotionClient.
-func (*mockNotionClient) GetSlugEntries(databaseID string) ([]notion.SlugEntry, error) {
+func (*mockNotionClient) GetSlugEntries(databaseID string, filter string) ([]notion.SlugEntry, error) {
 	return []notion.SlugEntry{
 		{
 			Slug:        "test",
