@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	log "htmx-blog/logging"
+	"htmx-blog/models"
 	"htmx-blog/services/notion"
 	"os"
 	"time"
@@ -184,6 +185,22 @@ func (c *cache) UpdateBlockChildrenCache(ctx context.Context, key string) ([]byt
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling rawblocks: %v", err)
 	}
+	// update the image url
+	for i := range rawBlocks {
+		// need to modify rawBlock if its an image block
+		var b models.Block
+		err := json.Unmarshal(rawBlocks[i], &b)
+		if err != nil {
+			log.Error("error unmarshalling rawblock: %v", err)
+			continue
+		}
+		if b.Type == "image" {
+			err = notion.StoreNotionImage(rawBlocks, i)
+			if err != nil {
+				log.Error("error storing notion image: %v", err)
+			}
+		}
+	}
 	err = c.UpdateCache(ctx, key, cachedJSON)
 	if err != nil {
 		return nil, fmt.Errorf("error updating cache: %v", err)
@@ -191,6 +208,7 @@ func (c *cache) UpdateBlockChildrenCache(ctx context.Context, key string) ([]byt
 	return cachedJSON, nil
 }
 
+// UpdateSlugEntriesCache will fetch the slug entries from the notion client and update the cache
 func (c *cache) UpdateSlugEntriesCache(ctx context.Context, key string) ([]byte, error) {
 	// fetch notion block
 	rawBlocks, err := c.notionClient.GetSlugEntries(key)

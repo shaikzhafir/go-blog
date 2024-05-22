@@ -3,6 +3,7 @@ package notion
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	log "htmx-blog/logging"
 	"htmx-blog/models"
@@ -568,4 +569,57 @@ func (nc *notionClient) ParseAndWriteNotionBlock(writer io.Writer, rawBlock []by
 	default:
 		return nil
 	}
+}
+
+// StoreNotionImage stores the image locally and updates the rawBlock with the new image url
+// first it will get the existing fresh image url from notion aws image url
+// then it will download the image from the aws image url
+// then it will store the image locally
+func StoreNotionImage(rawBlocks []json.RawMessage, i int) error {
+	var imageBlock models.Image
+	err := json.Unmarshal(rawBlocks[i], &imageBlock)
+	if err != nil {
+		log.Error("error unmarshalling imageblock: %v", err)
+	}
+	awsImageURL := imageBlock.Image.File.URL
+	// read and write image to r2, then update the rawBlock with the new image url
+	// Download file from S3
+	resp, err := http.Get(awsImageURL)
+	if err != nil {
+		return fmt.Errorf("error downloading image from s3: %v", err)
+	}
+	defer resp.Body.Close()
+
+	imageBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading image bytes: %v", err)
+	}
+	// store locally in ./images
+	// Ensure the folder exists
+	absPath, err := filepath.Abs("./images")
+	if err != nil {
+		return fmt.Errorf("error getting absolute path: %v", err)
+	}
+
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		os.Mkdir(absPath, os.ModePerm)
+	}
+
+	filePath := filepath.Join(absPath, "/", imageBlock.ID+".png")
+	err = os.WriteFile(filePath, imageBytes, 0755)
+	if err != nil {
+		return fmt.Errorf("error writing image to file: %v", err)
+	}
+
+	imageBlock.Image.File.URL = "https://cloud.shaikzhafir.com/images/" + imageBlock.ID + ".png"
+	if os.Getenv("DEV") == "true" {
+		imageBlock.Image.File.URL = "/images/" + imageBlock.ID + ".png"
+	}
+
+	// update rawBlock with new image url
+	rawBlocks[i], err = json.Marshal(imageBlock)
+	if err != nil {
+		return fmt.Errorf("error marshalling imageblock: %v", err)
+	}
+	return nil
 }

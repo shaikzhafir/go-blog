@@ -1,39 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://unpkg.com/htmx.org/dist/htmx.js"></script>
-    <link href="/static/output.css" type="text/css" rel="stylesheet" />
-    <title>get out of here!</title>
-  </head>
-  <body>
-    <div class="py-20 mx-5 xl:mx-80 bg-slate-500 mb-10 font-geist">
-      <p class="text-3xl my-2 text-green-500">welcome to szhafir blog</p>
-      <h1>Posts from Notion</h1>
-      <div
-        id="notionPosts"
-        class="h-full"
-        hx-get="/notion/posts"
-        hx-swap="innerHTML"
-        hx-trigger="load"
-      >
-        <div class="htmx-indicator">
-          loading... notion api is slow.. give chance..
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://unpkg.com/htmx.org/dist/htmx.js"></script>
+  <link href="/static/output.css" type="text/css" rel="stylesheet" />
+  <title>get out of here!</title>
+</head>
+
+<body>
+  <div class="py-20 mx-5 xl:mx-80 bg-slate-500 mb-10 font-geist">
+    <p class="text-3xl my-2 text-green-500">welcome to szhafir blog</p>
+    <div class="grid grid-cols-4">
+      <div>book1</div>
+      <div>book2</div>
+      <div>book3</div>
+      <div>book4</div>
+      <div>book5</div>
+    </div>
+    <div class="grid grid-cols-2">
+      <div>
+        <h1>Book Reviews</h1>
+        <div id="notionPosts" class="h-full" hx-get="/notion/posts" hx-swap="innerHTML" hx-trigger="load">
+          <div class="htmx-indicator">
+            loading... notion api is slow.. give chance..
+          </div>
         </div>
       </div>
-      <h1>Old school markdown</h1>
-      <div
-        id="reviews"
-        class="h-full"
-        hx-get="/reviews"
-        hx-swap="innerHTML"
-        hx-trigger="load"
-      ></div>
+      <div>
+        <div>
+          <h1>Coding Posts</h1>
+          <div id="reviews" class="h-full" hx-get="/reviews" hx-swap="innerHTML" hx-trigger="load"></div>
+        </div>
+      </div>
     </div>
-  </body>
-  <footer class="text-center text-xs">
-    <p>© 2023 szhafir</p>
-    <p>Powered by htmx, tailwind and go</p>
-  </footer>
+  </div>
+</body>
+<footer class="text-center text-xs">
+  <p>© 2023 szhafir</p>
+  <p>Powered by htmx, tailwind and go</p>
+</footer>
+
 </html>
