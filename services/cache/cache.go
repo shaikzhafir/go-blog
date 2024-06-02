@@ -23,6 +23,7 @@ type Cache interface {
 	Set(key string, value []byte) error
 	GetSlugEntries(ctx context.Context, key string, filter string) ([]notion.SlugEntry, error)
 	GetPostByID(ctx context.Context, key string) ([]json.RawMessage, error)
+	GetReadingNowPage(ctx context.Context, key string) ([]json.RawMessage, error)
 }
 
 func NewCache(redis *redis.Client, nc notion.NotionClient) Cache {
@@ -37,6 +38,20 @@ type inMemoryCache struct {
 
 func NewInMemoryCache() Cache {
 	return inMemoryCache{}
+}
+
+func (imc inMemoryCache) GetReadingNowPage(ctx context.Context, key string) ([]json.RawMessage, error) {
+	file, err := os.Open("./local/sampleData/readingnow.json")
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	var response notion.QueryBlockChildrenResponse
+	err = json.NewDecoder(file).Decode(&response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Results, nil
 }
 
 // GetPostByID implements Cache.
@@ -175,6 +190,42 @@ func (c *cache) GetSlugEntries(ctx context.Context, key string, filter string) (
 		}
 	}()
 	return slugEntries, nil
+}
+
+// try getting from cache
+// if cannot, then make via notion client
+func (c *cache) GetReadingNowPage(ctx context.Context, key string) ([]json.RawMessage, error) {
+	cachedJSON, err := c.redisClient.Get(ctx, key).Bytes()
+	if err != nil && err != redis.Nil {
+		// key does not exist, does not matter what the error is, we have to fetch from notion API
+		return nil, fmt.Errorf("error reading from cache: %v", err)
+	}
+	if err == redis.Nil {
+		// key does not exist, does not matter what the error is, we have to fetch from notion API
+		// fetch notion block
+		log.Info("redis nil, fetching from notion")
+		cachedJSON, err = c.UpdateBlockChildrenCache(ctx, key)
+		if err != nil {
+			return nil, fmt.Errorf("error adding to cache: %v", err)
+		}
+	}
+	var deserialized []json.RawMessage
+	err = json.Unmarshal(cachedJSON, &deserialized)
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		ctx := context.Background()
+		shouldUpdate := c.ShouldUpdateCache(ctx, key)
+		if shouldUpdate {
+			log.Info("expired")
+			_, err := c.UpdateBlockChildrenCache(ctx, key)
+			if err != nil {
+				log.Error("error updating cache: %v", err)
+			}
+		}
+	}()
+	return deserialized, nil
 }
 
 func (c *cache) UpdateBlockChildrenCache(ctx context.Context, key string) ([]byte, error) {

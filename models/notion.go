@@ -251,3 +251,10 @@ type Image struct {
 		} `json:"file"`
 	} `json:"image"`
 }
+
+type ReadingNowBlock struct {
+	Title    string `json:"title"`
+	ImageURL string `json:"image_url"`
+	Author   string `json:"author"`
+	Progress string `json:"progress"`
+}

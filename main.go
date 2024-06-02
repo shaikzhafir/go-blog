@@ -36,6 +36,8 @@ func main() {
 	mux.HandleFunc("GET /notion/allposts/{filter}", notionHandler.GetAllPosts())
 	mux.HandleFunc("GET /notion/posts/", notionHandler.RenderPostHTML())
 	mux.HandleFunc("GET /notion/content/", notionHandler.GetSinglePost())
+	mux.HandleFunc("GET /readingNow", notionHandler.GetReadingNowHandler())
+
 	mux.Handle("/", indexFs)
 	localAddress := "localhost:3000"
 	if os.Getenv("PROD") == "true" {

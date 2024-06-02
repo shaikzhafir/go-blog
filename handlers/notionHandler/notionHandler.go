@@ -42,6 +42,7 @@ type NotionHandler interface {
 	GetAllPosts() http.HandlerFunc
 	GetSinglePost() http.HandlerFunc
 	RenderPostHTML() http.HandlerFunc
+	GetReadingNowHandler() http.HandlerFunc
 }
 
 // GetAllPosts implements NotionHandler.
@@ -119,11 +120,104 @@ func (n *notionHandler) GetSinglePost() http.HandlerFunc {
 	}
 }
 
+func (n *notionHandler) GetReadingNowHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		blockID := os.Getenv("READING_NOW_BLOCK_ID")
+		readingNowBlocks, err := n.GetReadingNow(r.Context(), blockID)
+		if err != nil {
+			log.Error("error getting reading now blocks: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		tmpl, err := template.ParseFiles("./templates/readingNow.html")
+		if err != nil {
+			log.Error("error parsing template: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		for _, readingNowBlock := range readingNowBlocks {
+			err := tmpl.Execute(w, readingNowBlock)
+			if err != nil {
+				log.Error("error executing template: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+	}
+}
+
+// Get ReadingNow is custom and called to render the reading now blocks
+func (n *notionHandler) GetReadingNow(ctx context.Context, blockID string) ([]models.ReadingNowBlock, error) {
+	// first check if blockID exists in redis cache
+	// if it does, return the cached html
+	// if it doesn't, get the rawblocks from notion
+	rawBlocks, err := n.cache.GetReadingNowPage(ctx, blockID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting block children: %v", err)
+	}
+	// parse rawBlocks into reading book objects
+	// then render the reading book objects into html
+	// then return the html
+	readingNowBlocks := []models.ReadingNowBlock{}
+	var currentBook models.ReadingNowBlock
+	for i := range rawBlocks {
+		var b models.Block
+		err := json.Unmarshal(rawBlocks[i], &b)
+		if err != nil {
+			log.Error("error unmarshalling rawblock: %v", err)
+			continue
+		}
+		switch b.Type {
+		case "divider":
+			if i != 0 {
+				readingNowBlocks = append(readingNowBlocks, currentBook)
+			}
+			currentBook = models.ReadingNowBlock{}
+		case "heading_1":
+			// unmarshal into heading1 block
+			var heading1Block models.Heading1
+			err := json.Unmarshal(rawBlocks[i], &heading1Block)
+			if err != nil {
+				log.Error("error unmarshalling heading1 block: %v", err)
+				continue
+			}
+			currentBook.Title = heading1Block.Heading1.Text[0].Text.Content
+		case "heading_2":
+			// unmarshal into heading2 block
+			var heading2Block models.Heading2
+			err := json.Unmarshal(rawBlocks[i], &heading2Block)
+			if err != nil {
+				log.Error("error unmarshalling heading2 block: %v", err)
+				continue
+			}
+			currentBook.Author = heading2Block.Heading2.Text[0].Text.Content
+		case "heading_3":
+			// unmarshal into heading3 block
+			var heading3Block models.Heading3
+			err := json.Unmarshal(rawBlocks[i], &heading3Block)
+			if err != nil {
+				log.Error("error unmarshalling heading3 block: %v", err)
+				continue
+			}
+			currentBook.Progress = heading3Block.Heading3.Text[0].Text.Content
+		case "image":
+			var block models.Image
+			err := json.Unmarshal(rawBlocks[i], &block)
+			if err != nil {
+				log.Error("error unmarshalling image block: %v", err)
+				continue
+			}
+			currentBook.ImageURL = block.Image.File.URL
+		}
+	}
+	return readingNowBlocks, nil
+}
+
 // StoreNotionImage stores the image locally and updates the rawBlock with the new image url
 // first it will get the existing fresh image url from notion aws image url
 // then it will download the image from the aws image url
 // then it will store the image locally
-func StoreNotionImage(rawBlocks []json.RawMessage, i int) error {
+func StoreNotionImage(rawBlocks []json.RawMessage, i int) (string, error) {
 	var imageBlock models.Image
 	err := json.Unmarshal(rawBlocks[i], &imageBlock)
 	if err != nil {
@@ -134,19 +228,19 @@ func StoreNotionImage(rawBlocks []json.RawMessage, i int) error {
 	// Download file from S3
 	resp, err := http.Get(awsImageURL)
 	if err != nil {
-		return fmt.Errorf("error downloading image from s3: %v", err)
+		return "", fmt.Errorf("error downloading image from s3: %v", err)
 	}
 	defer resp.Body.Close()
 
 	imageBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("error reading image bytes: %v", err)
+		return "", fmt.Errorf("error reading image bytes: %v", err)
 	}
 	// store locally in ./images
 	// Ensure the folder exists
 	absPath, err := filepath.Abs("./images")
 	if err != nil {
-		return fmt.Errorf("error getting absolute path: %v", err)
+		return "", fmt.Errorf("error getting absolute path: %v", err)
 	}
 
 	if _, err := os.Stat(absPath); os.IsNotExist(err) {
@@ -156,7 +250,7 @@ func StoreNotionImage(rawBlocks []json.RawMessage, i int) error {
 	filePath := filepath.Join(absPath, "/", imageBlock.ID+".png")
 	err = os.WriteFile(filePath, imageBytes, 0755)
 	if err != nil {
-		return fmt.Errorf("error writing image to file: %v", err)
+		return "", fmt.Errorf("error writing image to file: %v", err)
 	}
 
 	imageBlock.Image.File.URL = "https://cloud.shaikzhafir.com/images/" + imageBlock.ID + ".png"
@@ -167,9 +261,9 @@ func StoreNotionImage(rawBlocks []json.RawMessage, i int) error {
 	// update rawBlock with new image url
 	rawBlocks[i], err = json.Marshal(imageBlock)
 	if err != nil {
-		return fmt.Errorf("error marshalling imageblock: %v", err)
+		return "", fmt.Errorf("error marshalling imageblock: %v", err)
 	}
-	return nil
+	return imageBlock.Image.File.URL, nil
 }
 
 func WriteNotionSlugEntriesToHTML(ctx context.Context, w http.ResponseWriter, slugEntries []notion.SlugEntry) error {
