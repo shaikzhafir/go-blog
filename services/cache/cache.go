@@ -224,6 +224,7 @@ func (c *cache) GetReadingNowPage(ctx context.Context, key string) ([]json.RawMe
 				log.Error("error updating cache: %v", err)
 			}
 		}
+		log.Info("not expired, so not updating cache")
 	}()
 	return deserialized, nil
 }
@@ -321,8 +322,8 @@ func (c *cache) ShouldUpdateCache(ctx context.Context, key string) bool {
 		log.Error("error getting timestamp: %v", err)
 		return false
 	}
-	// if timestamp is more than 1 hour ago, update cache
-	if time.Since(timestamp) > time.Hour {
+	// if timestamp is more than 1 min ago, update cache
+	if time.Since(timestamp) > time.Minute*1 {
 		return true
 	}
 	return false
