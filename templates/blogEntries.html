@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://unpkg.com/htmx.org/dist/htmx.js"></script>
+    <link href="/static/output.css" type="text/css" rel="stylesheet" />
+    <title>get out of here!</title>
+  </head>
+  <body>
+    <div class="py-20 mx-5 xl:mx-80 bg-slate-500 mb-10 font-geist">
+      <a href="/">
+        <p class="text-3xl my-2 text-green-500">welcome to szhafir blog</p>
+      </a>
+        <div>
+            {{range .}}
+                {{template "blogEntry" .}}
+            {{end}}
+        </div>
+    </div>
+  </body>
+  <footer class="text-center text-xs">
+    <p>© 2024 szhafir</p>
+    <p>Powered by htmx, tailwind and go</p>
+  </footer>
+</html>

@@ -268,16 +268,20 @@ func StoreNotionImage(rawBlocks []json.RawMessage, i int) (string, error) {
 
 func WriteNotionSlugEntriesToHTML(ctx context.Context, w http.ResponseWriter, slugEntries []notion.SlugEntry) error {
 	// convert posts to html template!
-	tmpl, err := template.ParseFiles("./templates/slugEntry.html")
+	tmpl, err := template.ParseFiles("./templates/blogEntries.html", "./templates/slugEntry.html")
 	if err != nil {
 		return err
 	}
-	for _, entry := range slugEntries {
+	/* for _, entry := range slugEntries {
 		err = tmpl.Execute(w, entry)
 		if err != nil {
 			// dont have to return error here, just log it as maybe some posts have issues
 			log.Error("error executing template for specific entry: %v", err)
 		}
+	} */
+	err = tmpl.Execute(w, slugEntries)
+	if err != nil {
+		log.Error("error executing template: %v", err)
 	}
 	return nil
 }

@@ -27,3 +27,4 @@ htmx-blog
 
 local
 dump.rdb
+images/*
