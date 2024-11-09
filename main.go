@@ -23,9 +23,9 @@ func main() {
 	mux := http.NewServeMux()
 	log.Info("Starting server, dev  %s", os.Getenv("DEV"))
 	// for js and css files
-	staticFs := http.FileServer(http.Dir("./static"))
-	indexFs := http.FileServer(http.Dir("./"))
-	mux.Handle("/static/", http.StripPrefix("/static/", staticFs))
+	//staticFs := http.FileServer(http.Dir("./static"))
+	indexFs := http.FileServer(http.Dir("./frontend/dist"))
+	//mux.Handle("/static/", http.StripPrefix("/static/", staticFs))
 
 	handler := markdownHandler.NewHandler()
 	notionClient := notion.NewNotionClient()
