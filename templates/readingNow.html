@@ -1,6 +1,11 @@
-<div class="border border-black p-2 md:p-4 max-w-sm bg-white flex flex-col items-center my-5">
-    <h1 class="text-xl font-bold text-gray-800 mb-2">{{.Title}}</h1>
-    <h2 class="text-lg text-gray-600 mb-1">{{.Author}}</h2>
-    <img src="{{.ImageURL}}" alt="Book cover image" class="w-48 h-60 object-cover mb-3">
-    <h3>{{.Progress}}%</h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+    {{range .Books}}
+    <div class="border border-black p-2 md:p-4 max-w-sm bg-white flex flex-col items-center my-5">
+        <h1 class="text-xl font-bold text-gray-800 h-16 flex items-center text-center">{{.Title}}</h1>
+        <h2 class="text-lg text-gray-600 h-8 flex items-center">{{.Author}}</h2>
+        <img src="{{.ImageURL}}" alt="Book cover image" class="w-48 h-60 object-cover">
+        <h3 class="h-8 flex items-center">{{.Progress}}%</h3>
+        <p class="text-center h-20 flex items-center">{{.Comments}}</p>
+    </div>
+    {{end}}
 </div>

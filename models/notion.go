@@ -257,4 +257,5 @@ type ReadingNowBlock struct {
 	ImageURL string `json:"image_url"`
 	Author   string `json:"author"`
 	Progress string `json:"progress"`
+	Comments string `json:"comments"`
 }

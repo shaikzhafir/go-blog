@@ -24,9 +24,11 @@ func main() {
 	log.Info("Starting server, dev  %s", os.Getenv("DEV"))
 	// for js and css files
 	staticFs := http.FileServer(http.Dir("./static"))
-	indexFs := http.FileServer(http.Dir("./"))
 	mux.Handle("/static/", http.StripPrefix("/static/", staticFs))
-
+	_, exists := os.LookupEnv("PROD")
+	if !exists {
+		mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir("./images"))))
+	}
 	handler := markdownHandler.NewHandler()
 	notionClient := notion.NewNotionClient()
 	notionHandler := notionHandler.NewHandler(notionClient, rdb)
@@ -38,7 +40,7 @@ func main() {
 	mux.HandleFunc("GET /notion/content/", notionHandler.GetSinglePost())
 	mux.HandleFunc("GET /readingNow", notionHandler.GetReadingNowHandler())
 
-	mux.Handle("/", indexFs)
+	mux.Handle("/", notionHandler.Index())
 	localAddress := "localhost:3000"
 	if os.Getenv("PROD") == "true" {
 		localAddress = os.Getenv("PROD_ADDRESS")

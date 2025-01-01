@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -39,6 +40,7 @@ func NewHandler(notionClient notion.NotionClient, redisClient *redis.Client) Not
 }
 
 type NotionHandler interface {
+	Index() http.HandlerFunc
 	GetAllPosts() http.HandlerFunc
 	GetSinglePost() http.HandlerFunc
 	RenderPostHTML() http.HandlerFunc
@@ -57,11 +59,7 @@ func (n *notionHandler) GetAllPosts() http.HandlerFunc {
 			log.Error("error getting slug entries: %v", err)
 			w.Write([]byte("error getting slug entries"))
 		}
-		err = WriteNotionSlugEntriesToHTML(r.Context(), w, slugEntries)
-		if err != nil {
-			log.Error("error writing notion slug entries to html: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
+		render(w, map[string]interface{}{"BlogEntries": slugEntries}, "./templates/blogEntries.html", "./templates/slugEntry.html")
 	}
 }
 
@@ -72,18 +70,7 @@ func (n *notionHandler) RenderPostHTML() http.HandlerFunc {
 		path := r.URL.Path
 		segments := strings.Split(path, "/")
 		blockID := segments[len(segments)-1]
-
-		tmpl, err := template.ParseFiles("./templates/notionPost.html")
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		err = tmpl.Execute(w, blockID)
-		if err != nil {
-			log.Error("error executing template: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+		render(w, map[string]interface{}{"BlockID": blockID}, "./templates/notionPost.html")
 	}
 }
 
@@ -129,20 +116,22 @@ func (n *notionHandler) GetReadingNowHandler() http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		// render standalone html template
 		tmpl, err := template.ParseFiles("./templates/readingNow.html")
 		if err != nil {
 			log.Error("error parsing template: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		for _, readingNowBlock := range readingNowBlocks {
-			err := tmpl.Execute(w, readingNowBlock)
-			if err != nil {
-				log.Error("error executing template: %v", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+		err = tmpl.Execute(w, map[string]interface{}{
+			"Books": readingNowBlocks,
+		})
+		if err != nil {
+			log.Error("error executing template: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
+
 	}
 }
 
@@ -208,6 +197,14 @@ func (n *notionHandler) GetReadingNow(ctx context.Context, blockID string) ([]mo
 				continue
 			}
 			currentBook.ImageURL = block.Image.File.URL
+		case "paragraph":
+			var block models.Paragraph
+			err := json.Unmarshal(rawBlocks[i], &block)
+			if err != nil {
+				log.Error("error unmarshalling paragraph block: %v", err)
+				continue
+			}
+			currentBook.Comments = block.Paragraph.RichText[0].PlainText
 		}
 	}
 	return readingNowBlocks, nil
@@ -266,22 +263,23 @@ func StoreNotionImage(rawBlocks []json.RawMessage, i int) (string, error) {
 	return imageBlock.Image.File.URL, nil
 }
 
-func WriteNotionSlugEntriesToHTML(ctx context.Context, w http.ResponseWriter, slugEntries []notion.SlugEntry) error {
-	// convert posts to html template!
-	tmpl, err := template.ParseFiles("./templates/blogEntries.html", "./templates/slugEntry.html")
-	if err != nil {
-		return err
+// Index is the main page for the notion handler
+func (n *notionHandler) Index() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		render(w, nil, "./templates/home.page.html")
 	}
-	/* for _, entry := range slugEntries {
-		err = tmpl.Execute(w, entry)
-		if err != nil {
-			// dont have to return error here, just log it as maybe some posts have issues
-			log.Error("error executing template for specific entry: %v", err)
-		}
-	} */
-	err = tmpl.Execute(w, slugEntries)
+}
+
+func render(w http.ResponseWriter, data map[string]interface{}, paths ...string) {
+	paths = append(paths, "./templates/main.layout.html")
+	tmpl, err := template.ParseFiles(paths...)
 	if err != nil {
-		log.Error("error executing template: %v", err)
+		http.Error(w, errors.Wrap(err, "failed to render html page").Error(), http.StatusInternalServerError)
+		return
 	}
-	return nil
+
+	err = tmpl.ExecuteTemplate(w, "main", data)
+	if err != nil {
+		http.Error(w, errors.Wrap(err, "failed to render html page").Error(), http.StatusInternalServerError)
+	}
 }
