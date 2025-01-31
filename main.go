@@ -3,6 +3,7 @@ package main
 import (
 	log "htmx-blog/logging"
 	"htmx-blog/services/notion"
+	"htmx-blog/services/strava"
 	"net/http"
 	"os"
 
@@ -31,7 +32,9 @@ func main() {
 	}
 	handler := markdownHandler.NewHandler()
 	notionClient := notion.NewNotionClient()
-	notionHandler := notionHandler.NewHandler(notionClient, rdb)
+	stravaClient := strava.NewStravaService()
+
+	notionHandler := notionHandler.NewHandler(notionClient, stravaClient, rdb)
 	mux.HandleFunc("GET /reviews", handler.GetReviewsList())
 	mux.HandleFunc("GET /reviews/", handler.GetReviewByTitle())
 	mux.HandleFunc("GET /blogposts", handler.GetBlogList())
@@ -39,12 +42,24 @@ func main() {
 	mux.HandleFunc("GET /notion/posts/", notionHandler.RenderPostHTML())
 	mux.HandleFunc("GET /notion/content/", notionHandler.GetSinglePost())
 	mux.HandleFunc("GET /readingNow", notionHandler.GetReadingNowHandler())
+	mux.HandleFunc("GET /strava", notionHandler.GetStravaHandler())
 
 	mux.Handle("/", notionHandler.Index())
+
+	internalMux := http.NewServeMux()
+	internalMux.HandleFunc("GET /cron/refreshStrava", notionHandler.RefreshAccessToken())
+	go runInternalServer(internalMux)
 	localAddress := "localhost:3000"
 	if os.Getenv("PROD") == "true" {
 		localAddress = os.Getenv("PROD_ADDRESS")
 	}
 	log.Info("server started on %s", localAddress)
 	log.Fatal("server died", http.ListenAndServe(localAddress, mux))
+}
+
+func runInternalServer(internalMux *http.ServeMux) {
+	log.Info("Starting internal API server on 127.0.0.1:8081")
+	if err := http.ListenAndServe("127.0.0.1:8081", internalMux); err != nil {
+		log.Error(err.Error())
+	}
 }

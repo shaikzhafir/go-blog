@@ -1,0 +1,14 @@
+{{define "content"}}
+<div>
+    <p class="text-5xl">strava activities (2025)</p>
+    {{range .Activities}}
+    <div class="my-2">
+        <div>
+            <p class="font-bold text-2xl">{{.StartDateLocal}}</p>
+            <p>Distance: {{.Distance}}m</p>
+            <p>Time taken: {{.MovingTime}}s</p>
+        </div>
+    </div>
+    {{end}}
+</div>
+{{end}}

@@ -9,6 +9,7 @@ import (
 	"htmx-blog/models"
 	"htmx-blog/services/cache"
 	"htmx-blog/services/notion"
+	"htmx-blog/services/strava"
 	"io"
 	"net/http"
 	"os"
@@ -22,10 +23,11 @@ import (
 type notionHandler struct {
 	cache        cache.Cache
 	notionClient notion.NotionClient
+	stravaClient strava.StravaService
 	redisClient  *redis.Client
 }
 
-func NewHandler(notionClient notion.NotionClient, redisClient *redis.Client) NotionHandler {
+func NewHandler(notionClient notion.NotionClient, stravaClient strava.StravaService, redisClient *redis.Client) NotionHandler {
 	/* if os.Getenv("DEV") == "true" {
 		return &notionHandler{
 			notionClient: notionClient,
@@ -35,6 +37,7 @@ func NewHandler(notionClient notion.NotionClient, redisClient *redis.Client) Not
 	return &notionHandler{
 		notionClient: notionClient,
 		redisClient:  redisClient,
+		stravaClient: stravaClient,
 		cache:        cache.NewCache(redisClient, notionClient),
 	}
 }
@@ -45,6 +48,8 @@ type NotionHandler interface {
 	GetSinglePost() http.HandlerFunc
 	RenderPostHTML() http.HandlerFunc
 	GetReadingNowHandler() http.HandlerFunc
+	GetStravaHandler() http.HandlerFunc
+	RefreshAccessToken() http.HandlerFunc
 }
 
 // GetAllPosts implements NotionHandler.
@@ -267,6 +272,29 @@ func StoreNotionImage(rawBlocks []json.RawMessage, i int) (string, error) {
 func (n *notionHandler) Index() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		render(w, nil, "./templates/home.page.html")
+	}
+}
+
+func (n *notionHandler) GetStravaHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// get strava data
+		activities, err := n.stravaClient.GetStravaData()
+		if err != nil {
+			log.Error("error getting strava data: %v", err)
+			w.Write([]byte("error getting strava data"))
+		}
+		render(w, map[string]interface{}{"Activities": activities}, "./templates/strava.page.html")
+	}
+}
+
+func (n *notionHandler) RefreshAccessToken() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := n.stravaClient.RefreshAccessToken()
+		if err != nil {
+			log.Error("error refreshing access token: %v", err)
+			w.Write([]byte("error refreshing access token"))
+		}
+		w.Write([]byte("access token refreshed"))
 	}
 }
 
