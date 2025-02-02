@@ -1,14 +1,115 @@
 {{define "content"}}
-<div>
-    <p class="text-5xl">strava activities (2025)</p>
-    {{range .Activities}}
-    <div class="my-2">
-        <div>
-            <p class="font-bold text-2xl">{{.StartDateLocal}}</p>
-            <p>Distance: {{.Distance}}m</p>
-            <p>Time taken: {{.MovingTime}}s</p>
-        </div>
+<div class="bg-gray-50 rounded-lg p-6 overflow-x-auto xl:w-4/5">
+    <div id="heatmap" class="flex flex-col gap-1 min-w-fit"></div>
+
+    <div class="flex items-center gap-2 mt-4 text-xs text-gray-600 min-w-fit">
+        <span>Less</span>
+        <div class="w-3 h-3 rounded-sm bg-activity-0"></div>
+        <div class="w-3 h-3 rounded-sm bg-activity-1"></div>
+        <div class="w-3 h-3 rounded-sm bg-activity-2"></div>
+        <div class="w-3 h-3 rounded-sm bg-activity-3"></div>
+        <div class="w-3 h-3 rounded-sm bg-activity-4"></div>
+        <span>More</span>
     </div>
-    {{end}}
 </div>
+
+<div id="tooltip" class="hidden absolute bg-gray-800 text-white px-3 py-2 rounded-md text-xs pointer-events-none"></div>
+</div>
+
+<script>
+    const activities = {{.Activities}};
+
+    function processActivities(activities) {
+        const activityMap = new Map();
+        activities.forEach(activity => {    
+            const date = activity.start_date_local.split('T')[0];
+            const existing = activityMap.get(date) || 0;
+            activityMap.set(date, existing + activity.distance);
+        });
+        return activityMap;
+    }
+
+    function getIntensityColor(value, max) {
+        if (value === 0) return 'bg-activity-0';
+        const normalized = value / max;
+        if (normalized <= 0.25) return 'bg-activity-1';
+        if (normalized <= 0.5) return 'bg-activity-2';
+        if (normalized <= 0.75) return 'bg-activity-3';
+        return 'bg-activity-4';
+    }
+
+    function createHeatmap() {
+        console.log('Creating heatmap');
+
+        const heatmapElement = document.getElementById('heatmap');
+        if (!heatmapElement) {
+            console.error('Heatmap element not found');
+            return;
+        }
+
+        // Clear existing content
+        heatmapElement.innerHTML = '';
+
+        const activityMap = processActivities(activities);
+        const max = Math.max(...Array.from(activityMap.values()));
+
+        const today = new Date();
+        const startDate = new Date(today.getFullYear(), 0, 1); // January 1st of current year
+
+        const grid = [];
+        for (let row = 0; row < 7; row++) {
+            grid[row] = [];
+            for (let col = 0; col < 52; col++) {
+                const currentDate = new Date(startDate);
+                currentDate.setDate(currentDate.getDate() + (col * 7) + row);
+                const dateStr = currentDate.toISOString().split('T')[0];
+                const value = activityMap.get(dateStr) || 0;
+                grid[row][col] = { date: dateStr, value };
+            }
+        }
+
+        grid.forEach(row => {
+            const rowElement = document.createElement('div');
+            rowElement.className = 'flex gap-1';
+
+            row.forEach(cell => {
+                const cellElement = document.createElement('div');
+                cellElement.className = `w-3 h-3 rounded-sm ${getIntensityColor(cell.value, max)} transition-colors duration-200 hover:ring-2 hover:ring-gray-400 cursor-pointer`;
+
+                cellElement.addEventListener('mouseover', (e) => {
+                    const tooltip = document.getElementById('tooltip');
+                    tooltip.classList.remove('hidden');
+                    tooltip.classList.add('block');
+                    tooltip.style.left = e.pageX + 10 + 'px';
+                    tooltip.style.top = e.pageY + 10 + 'px';
+
+                    const date = new Date(cell.date);
+                    const formattedDate = date.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+
+                    tooltip.textContent = `${formattedDate}: ${(cell.value / 1000).toFixed(2)}km`;
+                });
+
+                cellElement.addEventListener('mouseout', () => {
+                    const tooltip = document.getElementById('tooltip');
+                    tooltip.classList.remove('block');
+                    tooltip.classList.add('hidden');
+                });
+
+                rowElement.appendChild(cellElement);
+            });
+
+            heatmapElement.appendChild(rowElement);
+        });
+    }
+    // Initialize heatmap
+    document.addEventListener('DOMContentLoaded', function () {
+        // Your existing code here
+        createHeatmap();
+    });
+</script>
 {{end}}

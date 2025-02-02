@@ -11,6 +11,11 @@ import (
 	log "htmx-blog/logging"
 )
 
+const (
+	localStravaDataPath = "./activities.json"
+	prodStravaDataPath  = "/opt/blog/strava/activities.json"
+)
+
 type Activity struct {
 	Id             int     `json:"id"`
 	StartDateLocal string  `json:"start_date_local"`
@@ -31,6 +36,36 @@ type stravaService struct {
 }
 
 func (s *stravaService) GetStravaData() ([]Activity, error) {
+	// read from file
+	// if prod, read from /opt/blog/strava/activities.json
+	// if dev, read from ./strava/activities.json
+	if _, exists := os.LookupEnv("PROD"); exists {
+		activitiesJson, err := os.ReadFile("/opt/blog/strava/activities.json")
+		if err != nil {
+			log.Error("error reading activities from file: %v", err)
+			return nil, err
+		}
+		var activities []Activity
+		if err := json.Unmarshal(activitiesJson, &activities); err != nil {
+			log.Error("error unmarshalling activities: %v", err)
+			return nil, err
+		}
+		return activities, nil
+	}
+	activitiesJson, err := os.ReadFile(localStravaDataPath)
+	if err != nil {
+		log.Error("error reading activities from file: %v", err)
+		return nil, err
+	}
+	var activities []Activity
+	if err := json.Unmarshal(activitiesJson, &activities); err != nil {
+		log.Error("error unmarshalling activities: %v", err)
+		return nil, err
+	}
+	return activities, nil
+}
+
+func (s *stravaService) fetchStravaData() ([]Activity, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://www.strava.com/api/v3/athlete/activities?after=1735660800", nil)
 	if err != nil {
@@ -49,9 +84,6 @@ func (s *stravaService) GetStravaData() ([]Activity, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
-
-	log.Info("response body: %+v", string(bodyBytes))
-
 	var activities []Activity
 	if err := json.Unmarshal(bodyBytes, &activities); err != nil {
 		return nil, fmt.Errorf("error decoding response, proabbly issue with token: %w", err)
@@ -97,7 +129,36 @@ func (s *stravaService) RefreshAccessToken() error {
 	if err := os.Setenv("BEARER_TOKEN", tokenResp.AccessToken); err != nil {
 		return fmt.Errorf("error setting bearer token: %w", err)
 	}
-
-	log.Info("Successfully refreshed Strava access token")
+	log.Info("Successfully refreshed Strava access token, updating strava data")
+	s.updateStravaData()
 	return nil
+}
+
+// fetch activities will only be used when access token is refreshed
+// this is to limit the number of requests to strava
+func (s *stravaService) updateStravaData() {
+	// get strava data
+	activities, err := s.fetchStravaData()
+	if err != nil {
+		log.Error("error getting strava data: %v", err)
+	}
+	// store in json lolol
+	activitiesJson, err := json.Marshal(activities)
+	if err != nil {
+		log.Error("error marshalling activities: %v", err)
+	}
+	// store in raw json file in filesystem
+	// if prod, store in /opt/blog/strava/activities.json
+	// if dev, store in ./strava/activities.json
+	if _, exists := os.LookupEnv("PROD"); exists {
+		err = os.WriteFile("/opt/blog/strava/activities.json", activitiesJson, 0755)
+		if err != nil {
+			log.Error("error writing activities to file: %v", err)
+		}
+		return
+	}
+	err = os.WriteFile(localStravaDataPath, activitiesJson, 0755)
+	if err != nil {
+		log.Error("error writing activities to file: %v", err)
+	}
 }

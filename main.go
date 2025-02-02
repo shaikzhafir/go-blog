@@ -48,6 +48,11 @@ func main() {
 
 	internalMux := http.NewServeMux()
 	internalMux.HandleFunc("GET /cron/refreshStrava", notionHandler.RefreshAccessToken())
+	// refresh strava token on init always
+	err := stravaClient.RefreshAccessToken()
+	if err != nil {
+		log.Error("error refreshing strava token: %v", err)
+	}
 	go runInternalServer(internalMux)
 	localAddress := "localhost:3000"
 	if os.Getenv("PROD") == "true" {
