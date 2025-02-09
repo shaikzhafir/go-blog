@@ -38,15 +38,18 @@
                     class="text-lg md:text-2xl font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-gray-900 after:transition-all">
                     strava
                 </a>
+                <a href="/manga"
+                    class="text-lg md:text-2xl font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-gray-900 after:transition-all">
+                    manga
+                </a>
             </nav>
         </div>
         {{template "content" .}}
-        </div>
     </div>
+    <footer class="text-center text-xs pb-5">
+        <p>© <script>document.write(new Date().getFullYear())</script> szhafir</p>
+        <p>Site powered by htmx, tailwind and go, content from Notion</p>
+    </footer>
 </body>
-<footer class="text-center text-xs pb-5">
-    <p>© <script>document.write(new Date().getFullYear())</script> szhafir</p>
-    <p>Site powered by htmx, tailwind and go, content from Notion</p>
-</footer>
 </html>
 {{end}}
