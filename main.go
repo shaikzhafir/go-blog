@@ -1,14 +1,15 @@
 package main
 
 import (
+	"htmx-blog/handlers"
+	"htmx-blog/handlers/mangaHandler"
+	"htmx-blog/handlers/markdownHandler"
 	log "htmx-blog/logging"
+	"htmx-blog/services/cache"
 	"htmx-blog/services/notion"
 	"htmx-blog/services/strava"
 	"net/http"
 	"os"
-
-	"htmx-blog/handlers/markdownHandler"
-	"htmx-blog/handlers/notionHandler"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -33,21 +34,28 @@ func main() {
 	handler := markdownHandler.NewHandler()
 	notionClient := notion.NewNotionClient()
 	stravaClient := strava.NewStravaService()
+	cacheService := cache.NewCache(rdb, notionClient)
 
-	notionHandler := notionHandler.NewHandler(notionClient, stravaClient, rdb)
+	blogPostHandler := handlers.NewBlogPostHandler(notionClient, cacheService)
+	readingNowHandler := handlers.NewReadingNowHandler(cacheService)
+	stravaHandler := handlers.NewStravaHandler(stravaClient)
+
 	mux.HandleFunc("GET /reviews", handler.GetReviewsList())
 	mux.HandleFunc("GET /reviews/", handler.GetReviewByTitle())
 	mux.HandleFunc("GET /blogposts", handler.GetBlogList())
-	mux.HandleFunc("GET /notion/allposts/{filter}", notionHandler.GetAllPosts())
-	mux.HandleFunc("GET /notion/posts/", notionHandler.RenderPostHTML())
-	mux.HandleFunc("GET /notion/content/", notionHandler.GetSinglePost())
-	mux.HandleFunc("GET /readingNow", notionHandler.GetReadingNowHandler())
-	mux.HandleFunc("GET /strava", notionHandler.GetStravaHandler())
+	mux.HandleFunc("GET /notion/allposts/{filter}", blogPostHandler.GetAllPosts())
+	mux.HandleFunc("GET /notion/posts/", blogPostHandler.GetSinglePost())
+	mux.HandleFunc("GET /readingNow", readingNowHandler.GetReadingNowHandler())
+	mux.HandleFunc("GET /strava", stravaHandler.GetStravaHandler())
 
-	mux.Handle("/", notionHandler.Index())
+	// Initialize manga handler
+	mangaHandler := mangaHandler.NewHandler()
+	mux.HandleFunc("GET /manga", mangaHandler.GetMangaPage())
+
+	mux.Handle("/", readingNowHandler.GetReadingNowHandler())
 
 	internalMux := http.NewServeMux()
-	internalMux.HandleFunc("GET /cron/refreshStrava", notionHandler.RefreshAccessToken())
+	internalMux.HandleFunc("GET /cron/refreshStrava", stravaHandler.RefreshAccessToken())
 	// refresh strava token on init always
 	err := stravaClient.RefreshAccessToken()
 	if err != nil {
