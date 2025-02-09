@@ -20,3 +20,7 @@
 ```bash
 ./tailwindcss -i input.css -o ./static/output.css --minify
 ```
+
+# credits
+- running data provided by [Strava](https://www.strava.com/)
+- manga data provided by [MangaDex](https://mangadex.org/)
