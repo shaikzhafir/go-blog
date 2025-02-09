@@ -45,6 +45,7 @@ func main() {
 	mux.HandleFunc("GET /blogposts", handler.GetBlogList())
 	mux.HandleFunc("GET /notion/allposts/{filter}", blogPostHandler.GetAllPosts())
 	mux.HandleFunc("GET /notion/posts/", blogPostHandler.RenderPostHTML())
+	mux.HandleFunc("GET /notion/content/", blogPostHandler.GetSinglePost())
 	mux.HandleFunc("GET /readingNow", readingNowHandler.GetReadingNowHandler())
 	mux.HandleFunc("GET /strava", stravaHandler.GetStravaHandler())
 
