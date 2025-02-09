@@ -6,6 +6,7 @@ import (
 	"htmx-blog/handlers/markdownHandler"
 	log "htmx-blog/logging"
 	"htmx-blog/services/cache"
+	"htmx-blog/services/manga"
 	"htmx-blog/services/notion"
 	"htmx-blog/services/strava"
 	"net/http"
@@ -34,6 +35,7 @@ func main() {
 	handler := markdownHandler.NewHandler()
 	notionClient := notion.NewNotionClient()
 	stravaClient := strava.NewStravaService()
+	mangaService := manga.NewMangaService()
 	cacheService := cache.NewCache(rdb, notionClient)
 
 	blogPostHandler := handlers.NewBlogPostHandler(notionClient, cacheService)
@@ -57,10 +59,18 @@ func main() {
 
 	internalMux := http.NewServeMux()
 	internalMux.HandleFunc("GET /cron/refreshStrava", stravaHandler.RefreshAccessToken())
-	// refresh strava token on init always
-	err := stravaClient.RefreshAccessToken()
+	internalMux.HandleFunc("GET /cron/refreshManga", mangaHandler.UpdateMangaData())
+	// refresh strava token on init always in prod
+	err := mangaService.UpdateMangaData()
 	if err != nil {
-		log.Error("error refreshing strava token: %v", err)
+		log.Error("error updating manga data: %v", err)
+	}
+	if os.Getenv("PROD") == "true" {
+		err := stravaClient.RefreshAccessToken()
+		if err != nil {
+			log.Error("error refreshing strava token: %v", err)
+		}
+
 	}
 	go runInternalServer(internalMux)
 	localAddress := "localhost:3000"
