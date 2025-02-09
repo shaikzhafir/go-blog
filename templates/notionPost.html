@@ -1,3 +1,9 @@
-<article class="mx-auto max-w-4xl mt-12">
-    {{.Content}}
-</article>
+{{define "content"}}
+<div>
+  <div id="teehee" hx-get="/notion/content/{{.BlockID}}" hx-swap="innerHTML" hx-trigger="load">
+    <div class="htmx-indicator">
+      loading... notion api is slow.. give chance..
+    </div>
+  </div>
+</div>
+{{end}}
