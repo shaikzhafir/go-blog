@@ -1,9 +1,12 @@
 package mangaHandler
 
 import (
+	"fmt"
 	"htmx-blog/services/manga"
 	"htmx-blog/utils"
+	"io"
 	"net/http"
+	"time"
 
 	log "htmx-blog/logging"
 )
@@ -16,6 +19,7 @@ type mangaHandler struct {
 type MangaHandler interface {
 	GetMangaPage() http.HandlerFunc
 	UpdateMangaData() http.HandlerFunc
+	HandleCoverProxy() http.HandlerFunc
 }
 
 func NewHandler() MangaHandler {
@@ -44,5 +48,52 @@ func (h *mangaHandler) UpdateMangaData() http.HandlerFunc {
 			return
 		}
 		w.Write([]byte("manga data updated"))
+	}
+}
+
+func (h *mangaHandler) HandleCoverProxy() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Create HTTP client with timeout
+		client := &http.Client{
+			Timeout: 10 * time.Second,
+		}
+
+		// Construct MangaDex URL
+		mangadexURL := fmt.Sprintf("https://uploads.mangadex.org/covers/%s", r.URL.Path[len("/api/proxy/covers/"):])
+
+		// Create request
+		req, err := http.NewRequest("GET", mangadexURL, nil)
+		if err != nil {
+			http.Error(w, "Failed to create request", http.StatusInternalServerError)
+			return
+		}
+
+		// Set headers
+		req.Header.Set("User-Agent", "YourApp/1.0")
+		req.Header.Set("Referer", "https://mangadex.org/")
+		req.Header.Set("Accept", "image/*")
+
+		// Make request
+		resp, err := client.Do(req)
+		if err != nil {
+			http.Error(w, "Failed to fetch image", http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
+		// Check if response is successful
+		if resp.StatusCode != http.StatusOK {
+			http.Error(w, "Failed to fetch image", resp.StatusCode)
+			return
+		}
+
+		// Copy headers
+		for k, v := range resp.Header {
+			w.Header()[k] = v
+		}
+
+		// Stream the response
+		w.WriteHeader(resp.StatusCode)
+		io.Copy(w, resp.Body)
 	}
 }

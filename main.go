@@ -54,6 +54,7 @@ func main() {
 	// Initialize manga handler
 	mangaHandler := mangaHandler.NewHandler()
 	mux.HandleFunc("GET /manga", mangaHandler.GetMangaPage())
+	mux.HandleFunc("GET /api/proxy/covers/", mangaHandler.HandleCoverProxy())
 
 	mux.Handle("/", readingNowHandler.GetReadingNowHandler())
 

@@ -289,7 +289,7 @@ func (m *MangaService) GetMangaByID(id string) (*MangaInfoResponse, error) {
 			manga.Data.Author = rel.Attributes.Name
 		}
 		if rel.Type == "cover_art" {
-			manga.Data.ImageURL = fmt.Sprintf("https://uploads.mangadex.org/covers/%s/%s", manga.Data.ID, rel.Attributes.FileName)
+			manga.Data.ImageURL = fmt.Sprintf("/api/proxy/covers/%s/%s", manga.Data.ID, rel.Attributes.FileName)
 		}
 	}
 	return &manga, nil
