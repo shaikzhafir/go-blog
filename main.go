@@ -71,7 +71,6 @@ func main() {
 		if err != nil {
 			log.Error("error refreshing strava token: %v", err)
 		}
-
 	}
 	go runInternalServer(internalMux)
 	localAddress := "localhost:3000"

@@ -67,26 +67,11 @@ func (s *stravaService) GetStravaData() ([]Activity, error) {
 
 func (s *stravaService) fetchStravaData() ([]Activity, error) {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", "https://www.strava.com/api/v3/athlete/activities?after=1735660800", nil)
+	// only get activities after 1st Jan 2025
+	// this is to limit the number of activities fetched
+	activities, err := getAllActivities(client, 1735660800)
 	if err != nil {
-		return nil, fmt.Errorf("error creating request: %w", err)
-	}
-	log.Info("bearer token: %s", os.Getenv("BEARER_TOKEN"))
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("BEARER_TOKEN")))
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error making request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %w", err)
-	}
-	var activities []Activity
-	if err := json.Unmarshal(bodyBytes, &activities); err != nil {
-		return nil, fmt.Errorf("error decoding response, proabbly issue with token: %w", err)
+		return nil, fmt.Errorf("error getting all activities: %w", err)
 	}
 	log.Info("activities: %+v", activities)
 	return activities, nil
@@ -161,4 +146,58 @@ func (s *stravaService) updateStravaData() {
 	if err != nil {
 		log.Error("error writing activities to file: %v", err)
 	}
+}
+
+func getAllActivities(client *http.Client, after int64) ([]Activity, error) {
+	var allActivities []Activity
+	page := 1
+	perPage := 100
+
+	for {
+		// Construct URL with pagination parameters
+		url := fmt.Sprintf("https://www.strava.com/api/v3/athlete/activities?after=%d&page=%d&per_page=%d",
+			after, page, perPage)
+
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("error creating request: %w", err)
+		}
+
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("BEARER_TOKEN")))
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("error making request: %w", err)
+		}
+
+		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		if err != nil {
+			return nil, fmt.Errorf("error reading response body: %w", err)
+		}
+
+		var pageActivities []Activity
+		if err := json.Unmarshal(bodyBytes, &pageActivities); err != nil {
+			return nil, fmt.Errorf("error decoding response: %w", err)
+		}
+
+		// If no activities returned, we've reached the end
+		if len(pageActivities) == 0 {
+			break
+		}
+
+		// Append this page's activities to our total
+		allActivities = append(allActivities, pageActivities...)
+
+		// If we got fewer activities than perPage, we've reached the last page
+		if len(pageActivities) < perPage {
+			break
+		}
+
+		// Move to next page
+		page++
+	}
+
+	return allActivities, nil
 }
