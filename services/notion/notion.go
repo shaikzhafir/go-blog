@@ -231,22 +231,28 @@ func (nc *notionClient) GetAllPosts(databaseID string, filter string) (map[strin
 	return posts, nil
 }
 
-func (nc *notionClient) GetSlugEntries(databaseID string, filter string) ([]SlugEntry, error) {
+func (nc *notionClient) GetSlugEntries(datasourceID string, filter string) ([]SlugEntry, error) {
 	bodyPayload := bytes.NewBuffer([]byte(fmt.Sprintf(`{
 		"filter": {
-		"property": "tags",
-		"multi_select": {
-			"contains": "%s"
-		}
-	}
+			"property": "tags",
+			"multi_select": {
+				"contains": "%s"
+			}
+		},
+		"sorts": [
+			{
+				"timestamp": "created_time",
+				"direction": "descending"
+			}
+		]
 	}`, filter)))
-	req, err := http.NewRequest("POST", "https://api.notion.com/v1/databases/"+databaseID+"/query", bodyPayload)
+	req, err := http.NewRequest("POST", "https://api.notion.com/v1/data_sources/"+datasourceID+"/query", bodyPayload)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+nc.NotionToken)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Notion-Version", "2022-06-28")
+	req.Header.Set("Notion-Version", "2025-09-03")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -259,7 +265,6 @@ func (nc *notionClient) GetSlugEntries(databaseID string, filter string) ([]Slug
 	}
 
 	slugEntries := []SlugEntry{}
-
 	for _, entry := range dbResponse.Results {
 		// an empty RichText is not nil but an empty slice
 		if entry.Properties.Slug.RichText == nil || len(entry.Properties.Slug.RichText) == 0 || len(entry.Properties.Name.Title) == 0 {
