@@ -397,7 +397,10 @@ func (nc *notionClient) GetReadingNowEntries(datasourceID string, filter string)
 		}
 		// Handle image (files field)
 		if len(entry.Properties.Image.Files) > 0 {
-			slugEntry.Image = entry.Properties.Image.Files[0].External.URL
+			slugEntry.Image, err = convertAndStoreImage(entry)
+			if err != nil {
+				log.Error("error converting and storing image: %v", err)
+			}
 		}
 		// Handle comment (rich_text field that might be empty)
 		if len(entry.Properties.Comment.RichText) > 0 {
@@ -408,6 +411,43 @@ func (nc *notionClient) GetReadingNowEntries(datasourceID string, filter string)
 		readnowEntries = append(readnowEntries, slugEntry)
 	}
 	return readnowEntries, nil
+}
+
+func convertAndStoreImage(entry Entry) (string, error) {
+	resp, err := http.Get(entry.Properties.Image.Files[0].External.URL)
+	if err != nil {
+		return "", fmt.Errorf("error downloading image from s3: %v", err)
+	}
+	defer resp.Body.Close()
+
+	imageBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("error reading image bytes: %v", err)
+	}
+	// store locally in ./images
+	// Ensure the folder exists
+	absPath, err := filepath.Abs("./images")
+	if err != nil {
+		return "", fmt.Errorf("error getting absolute path: %v", err)
+	}
+
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		os.Mkdir(absPath, os.ModePerm)
+	}
+
+	var imageUrl string
+	imageID := entry.ID
+	filePath := filepath.Join(absPath, "/", imageID+".png")
+	err = os.WriteFile(filePath, imageBytes, 0755)
+	if err != nil {
+		return "", fmt.Errorf("error writing image to file: %v", err)
+	}
+
+	imageUrl = "https://cloud.shaikzhafir.com/images/" + imageID + ".png"
+	if os.Getenv("DEV") == "true" {
+		imageUrl = "/images/" + imageID + ".png"
+	}
+	return imageUrl, nil
 }
 
 func (nc *notionClient) GetDatabaseID() string {
