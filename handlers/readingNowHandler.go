@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,100 +11,49 @@ import (
 	log "htmx-blog/logging"
 	"htmx-blog/models"
 	"htmx-blog/services/cache"
+	"htmx-blog/services/notion"
 	"htmx-blog/utils"
 )
 
 type ReadingNowHandler struct {
-	cache cache.Cache
+	cache        cache.Cache
+	notionClient notion.NotionClient
 }
 
-func NewReadingNowHandler(cache cache.Cache) *ReadingNowHandler {
+func NewReadingNowHandler(cache cache.Cache, notionClient notion.NotionClient) *ReadingNowHandler {
 	return &ReadingNowHandler{
-		cache: cache,
+		cache:        cache,
+		notionClient: notionClient,
 	}
 }
 
-func (h *ReadingNowHandler) GetReadingNowHandler() http.HandlerFunc {
+func (h *ReadingNowHandler) GetReadingNow() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		blockID := os.Getenv("READING_NOW_BLOCK_ID")
-		readingNowBlocks, err := h.GetReadingNow(r.Context(), blockID)
+		log.Info("getting reading now")
+		databaseID := h.notionClient.GetDatabaseID()
+		readingNowEntries, err := h.cache.GetReadingNowEntries(r.Context(), databaseID, "speaking")
 		if err != nil {
-			log.Error("error getting reading now blocks: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
+			log.Error("error getting reading now entries: %v", err)
+			w.Write([]byte("error getting reading now entries"))
 			return
 		}
 
+		readingNowBlocks := []models.ReadingNowBlock{}
+		for _, entry := range readingNowEntries {
+			var readingNowBlock models.ReadingNowBlock
+			readingNowBlock.Title = entry.Title
+			readingNowBlock.Author = entry.Author
+			readingNowBlock.Progress = entry.Progress
+			readingNowBlock.ImageURL = entry.Image
+			readingNowBlock.Comments = entry.Comment
+			readingNowBlocks = append(readingNowBlocks, readingNowBlock)
+		}
+
+		log.Info("reading now blocks: %v", readingNowBlocks)
 		utils.Render(w, map[string]interface{}{
 			"Books": readingNowBlocks,
 		}, "./templates/readingNow.html")
 	}
-}
-
-func (h *ReadingNowHandler) GetReadingNow(ctx context.Context, blockID string) ([]models.ReadingNowBlock, error) {
-	rawBlocks, err := h.cache.GetReadingNowPage(ctx, blockID)
-	if err != nil {
-		return nil, fmt.Errorf("error getting block children: %v", err)
-	}
-
-	readingNowBlocks := []models.ReadingNowBlock{}
-	var currentBook models.ReadingNowBlock
-	for i := range rawBlocks {
-		var b models.Block
-		err := json.Unmarshal(rawBlocks[i], &b)
-		if err != nil {
-			log.Error("error unmarshalling rawblock: %v", err)
-			continue
-		}
-
-		switch b.Type {
-		case "divider":
-			if i != 0 {
-				readingNowBlocks = append(readingNowBlocks, currentBook)
-			}
-			currentBook = models.ReadingNowBlock{}
-		case "heading_1":
-			var heading1Block models.Heading1
-			err := json.Unmarshal(rawBlocks[i], &heading1Block)
-			if err != nil {
-				log.Error("error unmarshalling heading1 block: %v", err)
-				continue
-			}
-			currentBook.Title = heading1Block.Heading1.Text[0].Text.Content
-		case "heading_2":
-			var heading2Block models.Heading2
-			err := json.Unmarshal(rawBlocks[i], &heading2Block)
-			if err != nil {
-				log.Error("error unmarshalling heading2 block: %v", err)
-				continue
-			}
-			currentBook.Author = heading2Block.Heading2.Text[0].Text.Content
-		case "heading_3":
-			var heading3Block models.Heading3
-			err := json.Unmarshal(rawBlocks[i], &heading3Block)
-			if err != nil {
-				log.Error("error unmarshalling heading3 block: %v", err)
-				continue
-			}
-			currentBook.Progress = heading3Block.Heading3.Text[0].Text.Content
-		case "image":
-			var block models.Image
-			err := json.Unmarshal(rawBlocks[i], &block)
-			if err != nil {
-				log.Error("error unmarshalling image block: %v", err)
-				continue
-			}
-			currentBook.ImageURL = block.Image.File.URL
-		case "paragraph":
-			var block models.Paragraph
-			err := json.Unmarshal(rawBlocks[i], &block)
-			if err != nil {
-				log.Error("error unmarshalling paragraph block: %v", err)
-				continue
-			}
-			currentBook.Comments = block.Paragraph.RichText[0].PlainText
-		}
-	}
-	return readingNowBlocks, nil
 }
 
 func StoreNotionImage(rawBlocks []json.RawMessage, i int) (string, error) {

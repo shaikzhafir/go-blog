@@ -17,6 +17,11 @@ func NewMockNotionClient() notion.NotionClient {
 type mockNotionClient struct {
 }
 
+// GetReadingNowEntries implements notion.NotionClient.
+func (m *mockNotionClient) GetReadingNowEntries(datasourceID string, filter string) ([]notion.ReadingNow, error) {
+	panic("unimplemented")
+}
+
 // GetAllPosts implements notion.NotionClient.
 func (*mockNotionClient) GetAllPosts(databaseID string, filter string) (map[string]string, error) {
 	panic("unimplemented")

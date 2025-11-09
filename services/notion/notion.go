@@ -35,9 +35,23 @@ type SlugEntry struct {
 	Slug        string `json:"slug"`
 }
 
+type ReadingNow struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	CreatedTime string `json:"created_time"`
+	Image       string `json:"image,omitempty"`
+	Comment     string `json:"comment,omitempty"`
+	Progress    string `json:"progress,omitempty"`
+	Author      string `json:"author,omitempty"`
+}
+
 type Properties struct {
-	Slug Slug `json:"slug"`
-	Name Name `json:"Name"`
+	Slug     Slug           `json:"slug"`
+	Name     Name           `json:"name"`
+	Author   Slug           `json:"author"`
+	Image    PropertyImage  `json:"image"`
+	Comment  Slug           `json:"comment"`
+	Progress PropertyNumber `json:"progress"`
 }
 
 type Name struct {
@@ -84,6 +98,24 @@ type Slug struct {
 	} `json:"rich_text"`
 }
 
+type PropertyImage struct {
+	ID    string `json:"id"`
+	Type  string `json:"type"`
+	Files []struct {
+		Name     string `json:"name"`
+		Type     string `json:"type"`
+		External struct {
+			URL string `json:"url"`
+		} `json:"external"`
+	} `json:"files"`
+}
+
+type PropertyNumber struct {
+	ID     string   `json:"id"`
+	Type   string   `json:"type"`
+	Number *float64 `json:"number"`
+}
+
 type QueryDBResponse struct {
 	Object     string  `json:"object"`
 	Results    []Entry `json:"results"`
@@ -106,6 +138,7 @@ type NotionClient interface {
 	GetPage(pageID string) (models.Page, error)
 	GetAllPosts(databaseID string, filter string) (map[string]string, error)
 	GetSlugEntries(databaseID string, filter string) ([]SlugEntry, error)
+	GetReadingNowEntries(datasourceID string, filter string) ([]ReadingNow, error)
 	GetDatabaseID() string
 	ParseAndWriteNotionBlock(writer io.Writer, rawBlock []byte) error
 }
@@ -253,6 +286,7 @@ func (nc *notionClient) GetSlugEntries(datasourceID string, filter string) ([]Sl
 	req.Header.Set("Authorization", "Bearer "+nc.NotionToken)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Notion-Version", "2025-09-03")
+	log.Info("making request to notion for slug entries, %+v", req)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -265,6 +299,7 @@ func (nc *notionClient) GetSlugEntries(datasourceID string, filter string) ([]Sl
 	}
 
 	slugEntries := []SlugEntry{}
+	log.Info("notion response: %+v", dbResponse)
 	for _, entry := range dbResponse.Results {
 		// an empty RichText is not nil but an empty slice
 		if entry.Properties.Slug.RichText == nil || len(entry.Properties.Slug.RichText) == 0 || len(entry.Properties.Name.Title) == 0 {
@@ -294,6 +329,85 @@ func (nc *notionClient) GetSlugEntries(datasourceID string, filter string) ([]Sl
 	}
 
 	return slugEntries, nil
+}
+
+func (nc *notionClient) GetReadingNowEntries(datasourceID string, filter string) ([]ReadingNow, error) {
+	bodyPayload := bytes.NewBuffer([]byte(fmt.Sprintf(`{
+		"filter": {
+			"property": "tags",
+			"multi_select": {
+				"contains": "%s"
+			}
+		},
+		"sorts": [
+			{
+				"timestamp": "created_time",
+				"direction": "descending"
+			}
+		]
+	}`, filter)))
+	req, err := http.NewRequest("POST", "https://api.notion.com/v1/data_sources/"+datasourceID+"/query", bodyPayload)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+nc.NotionToken)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Notion-Version", "2025-09-03")
+	log.Info("making request to notion for slug entries, %+v", req)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var dbResponse QueryDBResponse
+	err = json.NewDecoder(resp.Body).Decode(&dbResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	readnowEntries := []ReadingNow{}
+	log.Info("notion response: %+v", dbResponse)
+	for _, entry := range dbResponse.Results {
+		// Check if title exists
+		if len(entry.Properties.Name.Title) == 0 {
+			continue
+		}
+
+		parsedTime, err := time.Parse(time.RFC3339, entry.CreatedTime)
+		if err != nil {
+			log.Error("error parsing time: %v", err)
+		} else {
+			readableFormat := "January 2, 2006 at 15:04"
+			entry.CreatedTime = parsedTime.Format(readableFormat)
+		}
+
+		slugEntry := ReadingNow{
+			ID:          entry.ID,
+			Title:       entry.Properties.Name.Title[0].PlainText,
+			CreatedTime: entry.CreatedTime,
+		}
+
+		// Handle author (rich_text field)
+		if len(entry.Properties.Author.RichText) > 0 {
+			slugEntry.Author = entry.Properties.Author.RichText[0].PlainText
+		}
+		// Handle progress (number field, not rich_text!)
+		if entry.Properties.Progress.Number != nil {
+			slugEntry.Progress = fmt.Sprintf("%.0f", *entry.Properties.Progress.Number)
+		}
+		// Handle image (files field)
+		if len(entry.Properties.Image.Files) > 0 {
+			slugEntry.Image = entry.Properties.Image.Files[0].External.URL
+		}
+		// Handle comment (rich_text field that might be empty)
+		if len(entry.Properties.Comment.RichText) > 0 {
+			slugEntry.Comment = entry.Properties.Comment.RichText[0].PlainText
+		}
+		log.Info("slug entry: %+v", slugEntry)
+		// append to slice
+		readnowEntries = append(readnowEntries, slugEntry)
+	}
+	return readnowEntries, nil
 }
 
 func (nc *notionClient) GetDatabaseID() string {

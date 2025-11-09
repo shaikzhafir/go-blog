@@ -39,7 +39,7 @@ func main() {
 	cacheService := cache.NewCache(rdb, notionClient)
 
 	blogPostHandler := handlers.NewBlogPostHandler(notionClient, cacheService)
-	readingNowHandler := handlers.NewReadingNowHandler(cacheService)
+	readingNowHandler := handlers.NewReadingNowHandler(cacheService, notionClient)
 	stravaHandler := handlers.NewStravaHandler(stravaClient)
 
 	mux.HandleFunc("GET /reviews", handler.GetReviewsList())
@@ -48,7 +48,7 @@ func main() {
 	mux.HandleFunc("GET /notion/allposts/{filter}", blogPostHandler.GetAllPosts())
 	mux.HandleFunc("GET /notion/posts/", blogPostHandler.RenderPostHTML())
 	mux.HandleFunc("GET /notion/content/", blogPostHandler.GetSinglePost())
-	mux.HandleFunc("GET /readingNow", readingNowHandler.GetReadingNowHandler())
+	mux.HandleFunc("GET /readingNow", readingNowHandler.GetReadingNow())
 	mux.HandleFunc("GET /strava", stravaHandler.GetStravaHandler())
 
 	// Initialize manga handler
@@ -56,7 +56,7 @@ func main() {
 	mux.HandleFunc("GET /manga", mangaHandler.GetMangaPage())
 	mux.HandleFunc("GET /api/proxy/covers/", mangaHandler.HandleCoverProxy())
 
-	mux.Handle("/", readingNowHandler.GetReadingNowHandler())
+	mux.Handle("/", readingNowHandler.GetReadingNow())
 
 	internalMux := http.NewServeMux()
 	internalMux.HandleFunc("GET /cron/refreshStrava", stravaHandler.RefreshAccessToken())

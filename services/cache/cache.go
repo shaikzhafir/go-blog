@@ -22,6 +22,7 @@ type Cache interface {
 	Get(key string) ([]byte, error)
 	Set(key string, value []byte) error
 	GetSlugEntries(ctx context.Context, key string, filter string) ([]notion.SlugEntry, error)
+	GetReadingNowEntries(ctx context.Context, key string, filter string) ([]notion.ReadingNow, error)
 	GetPostByID(ctx context.Context, key string) ([]json.RawMessage, error)
 	GetReadingNowPage(ctx context.Context, key string) ([]json.RawMessage, error)
 }
@@ -30,10 +31,21 @@ func NewCache(redis *redis.Client, nc notion.NotionClient) Cache {
 	/* if os.Getenv("DEV") == "true" {
 		return NewInMemoryCache()
 	} */
-	return &cache{redisClient: redis, notionClient: nc}
+	// Initialize JSON file cache with default cache directory
+	cacheDir := "./cache"
+	if customDir := os.Getenv("CACHE_DIR"); customDir != "" {
+		cacheDir = customDir
+	}
+	jsonClient := NewJSONFileClient(cacheDir)
+	return &cache{redisClient: redis, notionClient: nc, jsonClient: jsonClient}
 }
 
 type inMemoryCache struct {
+}
+
+// GetReadingNowEntries implements Cache.
+func (imc inMemoryCache) GetReadingNowEntries(ctx context.Context, key string, filter string) ([]notion.ReadingNow, error) {
+	panic("unimplemented")
 }
 
 func NewInMemoryCache() Cache {
@@ -119,9 +131,90 @@ func (imc inMemoryCache) Set(key string, value []byte) error {
 	panic("unimplemented")
 }
 
+type JSONClient interface {
+	Get(key string) ([]byte, error)
+	Set(key string, value []byte) error
+}
+
+type jsonFileClient struct {
+	cacheDir string
+}
+
+func NewJSONFileClient(cacheDir string) JSONClient {
+	// Create cache directory if it doesn't exist
+	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
+		os.MkdirAll(cacheDir, os.ModePerm)
+	}
+	return &jsonFileClient{cacheDir: cacheDir}
+}
+
+func (jc *jsonFileClient) Get(key string) ([]byte, error) {
+	filePath := fmt.Sprintf("%s/%s.json", jc.cacheDir, key)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("cache miss")
+		}
+		return nil, err
+	}
+	return data, nil
+}
+
+func (jc *jsonFileClient) Set(key string, value []byte) error {
+	filePath := fmt.Sprintf("%s/%s.json", jc.cacheDir, key)
+	err := os.WriteFile(filePath, value, 0644)
+	if err != nil {
+		return fmt.Errorf("error writing to file: %v", err)
+	}
+	return nil
+}
+
 type cache struct {
 	redisClient  *redis.Client
+	jsonClient   JSONClient
 	notionClient notion.NotionClient
+}
+
+// GetReadingNowEntries implements Cache.
+func (c *cache) GetReadingNowEntries(ctx context.Context, key string, filter string) ([]notion.ReadingNow, error) {
+	readingNowKey := fmt.Sprintf("%s-%s", key, filter)
+
+	// Try to get from JSON file cache first
+	cachedJSON, err := c.jsonClient.Get(readingNowKey)
+	if err != nil && err.Error() != "cache miss" {
+		return nil, fmt.Errorf("error reading from cache: %v", err)
+	}
+
+	// If cache miss, fetch from Notion API
+	if err != nil && err.Error() == "cache miss" {
+		log.Info("json cache miss, fetching from notion")
+		cachedJSON, err = c.UpdateReadingNowEntriesCache(ctx, key, filter)
+		if err != nil {
+			return nil, fmt.Errorf("error adding to cache: %v", err)
+		}
+	}
+
+	var readingNowEntries []notion.ReadingNow
+	err = json.Unmarshal(cachedJSON, &readingNowEntries)
+	if err != nil {
+		log.Error("Failed to deserialize: %v", err)
+		return nil, err
+	}
+
+	// Asynchronously update cache if expired
+	go func() {
+		ctx := context.Background()
+		shouldUpdate := c.ShouldUpdateJSONCache(ctx, readingNowKey)
+		if shouldUpdate {
+			log.Info("cache expired, updating")
+			_, err := c.UpdateReadingNowEntriesCache(ctx, key, filter)
+			if err != nil {
+				log.Error("error updating cache: %v", err)
+			}
+		}
+	}()
+
+	return readingNowEntries, nil
 }
 
 // GetPostByID implements Cache.
@@ -285,6 +378,29 @@ func (c *cache) UpdateSlugEntriesCache(ctx context.Context, key string, filter s
 	return cachedJSON, nil
 }
 
+// UpdateReadingNowEntriesCache will fetch the reading now entries from the notion client and update the JSON cache
+func (c *cache) UpdateReadingNowEntriesCache(ctx context.Context, key string, filter string) ([]byte, error) {
+	log.Info("fetching reading now entries from notion")
+	readingNowEntries, err := c.notionClient.GetReadingNowEntries(key, filter)
+	if err != nil {
+		return nil, fmt.Errorf("error getting reading now entries: %v", err)
+	}
+
+	// Serialize the entries
+	cachedJSON, err := json.Marshal(readingNowEntries)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling reading now entries: %v", err)
+	}
+
+	readingNowKey := fmt.Sprintf("%s-%s", key, filter)
+	err = c.UpdateJSONCache(ctx, readingNowKey, cachedJSON)
+	if err != nil {
+		return nil, fmt.Errorf("error updating json cache: %v", err)
+	}
+
+	return cachedJSON, nil
+}
+
 func (c *cache) UpdateCache(ctx context.Context, key string, value []byte) error {
 	err := c.redisClient.Set(ctx, key, value, 0).Err()
 	if err != nil {
@@ -296,6 +412,28 @@ func (c *cache) UpdateCache(ctx context.Context, key string, value []byte) error
 	if err != nil {
 		return fmt.Errorf("error setting key: %v", err)
 	}
+	return nil
+}
+
+// UpdateJSONCache updates the JSON file cache with the given key and value
+func (c *cache) UpdateJSONCache(ctx context.Context, key string, value []byte) error {
+	err := c.jsonClient.Set(key, value)
+	if err != nil {
+		return fmt.Errorf("error setting json cache key: %v", err)
+	}
+
+	// Store timestamp separately
+	currentTime := CurrentTime()
+	timestampData, err := json.Marshal(currentTime)
+	if err != nil {
+		return fmt.Errorf("error marshalling timestamp: %v", err)
+	}
+
+	err = c.jsonClient.Set(key+"-timestamp", timestampData)
+	if err != nil {
+		return fmt.Errorf("error setting json cache timestamp: %v", err)
+	}
+
 	return nil
 }
 
@@ -323,6 +461,32 @@ func (c *cache) ShouldUpdateCache(ctx context.Context, key string) bool {
 		return false
 	}
 	// if timestamp is more than 1 min ago, update cache
+	if time.Since(timestamp) > time.Minute*1 {
+		return true
+	}
+	return false
+}
+
+// ShouldUpdateJSONCache checks if the JSON cache should be updated based on timestamp
+func (c *cache) ShouldUpdateJSONCache(ctx context.Context, key string) bool {
+	timestampData, err := c.jsonClient.Get(key + "-timestamp")
+	currentTime := CurrentTime()
+
+	// If error (cache miss or other), create timestamp and return false
+	if err != nil {
+		timestampBytes, _ := json.Marshal(currentTime)
+		c.jsonClient.Set(key+"-timestamp", timestampBytes)
+		return false
+	}
+
+	var timestamp time.Time
+	err = json.Unmarshal(timestampData, &timestamp)
+	if err != nil {
+		log.Error("error unmarshalling timestamp: %v", err)
+		return false
+	}
+
+	// If timestamp is more than 1 min ago, update cache
 	if time.Since(timestamp) > time.Minute*1 {
 		return true
 	}
