@@ -299,7 +299,6 @@ func (nc *notionClient) GetSlugEntries(datasourceID string, filter string) ([]Sl
 	}
 
 	slugEntries := []SlugEntry{}
-	log.Info("notion response: %+v", dbResponse)
 	for _, entry := range dbResponse.Results {
 		// an empty RichText is not nil but an empty slice
 		if entry.Properties.Slug.RichText == nil || len(entry.Properties.Slug.RichText) == 0 || len(entry.Properties.Name.Title) == 0 {
@@ -353,7 +352,6 @@ func (nc *notionClient) GetReadingNowEntries(datasourceID string, filter string)
 	req.Header.Set("Authorization", "Bearer "+nc.NotionToken)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Notion-Version", "2025-09-03")
-	log.Info("making request to notion for slug entries, %+v", req)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -366,7 +364,6 @@ func (nc *notionClient) GetReadingNowEntries(datasourceID string, filter string)
 	}
 
 	readnowEntries := []ReadingNow{}
-	log.Info("notion response: %+v", dbResponse)
 	for _, entry := range dbResponse.Results {
 		// Check if title exists
 		if len(entry.Properties.Name.Title) == 0 {
@@ -406,7 +403,6 @@ func (nc *notionClient) GetReadingNowEntries(datasourceID string, filter string)
 		if len(entry.Properties.Comment.RichText) > 0 {
 			slugEntry.Comment = entry.Properties.Comment.RichText[0].PlainText
 		}
-		log.Info("slug entry: %+v", slugEntry)
 		// append to slice
 		readnowEntries = append(readnowEntries, slugEntry)
 	}

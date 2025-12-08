@@ -45,7 +45,7 @@ func (n *BlogPostHandler) RenderPostHTML() http.HandlerFunc {
 		path := r.URL.Path
 		segments := strings.Split(path, "/")
 		blockID := segments[len(segments)-1]
-		render(w, map[string]interface{}{"BlockID": blockID}, "./templates/notionPost.html")
+		utils.Render(w, map[string]interface{}{"BlockID": blockID}, "./templates/notionPost.html")
 	}
 }
 
