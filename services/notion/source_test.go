@@ -64,7 +64,7 @@ func (m *mockNotionClientForSource) GetAllPosts(databaseID string, filter string
 	return nil, nil
 }
 
-func (m *mockNotionClientForSource) ParseAndWriteNotionBlock(writer io.Writer, rawBlock []byte) error {
+func (m *mockNotionClientForSource) ParseAndWriteNotionBlock(writer io.Writer, rawBlock []byte, postType string) error {
 	writer.Write([]byte("<div>rendered</div>"))
 	return nil
 }
@@ -150,7 +150,7 @@ func Test_NotionBlockRenderer_RenderBlock(t *testing.T) {
 	renderer := NewBlockRendererWithClient(mockClient)
 
 	var buf bytes.Buffer
-	err := renderer.RenderBlock(&buf, []byte(`{"type":"paragraph"}`))
+	err := renderer.RenderBlock(&buf, []byte(`{"type":"paragraph"}`), "")
 
 	assert.NoError(t, err)
 	assert.Equal(t, "<div>rendered</div>", buf.String())

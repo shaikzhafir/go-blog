@@ -24,26 +24,66 @@
 <body>
     <div class="py-20 mx-5 xl:mx-56 bg-slate-300 mb-10 font-geist">
         <div class="flex items-baseline gap-4 mb-5">
-            <a href="/"><p class="text-md md:text-2xl text-green-700 hover:text-green-900 transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-green-900 after:transition-all">home</p></a>
+            <a
+                data-nav
+                href="/"
+                class="text-md md:text-2xl text-green-700 hover:text-green-900 transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-green-900 after:transition-all after:content-['']"
+            >
+                home
+            </a>
             <nav class="flex gap-6 p-4">
-                <a href="/notion/allposts/book-reviews"
-                    class="text-md md:text-2xl font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-gray-900 after:transition-all">
+                <a
+                    data-nav
+                    href="/notion/allposts/book-reviews"
+                    class="text-md md:text-2xl font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-gray-900 after:transition-all after:content-['']"
+                >
                     books
                 </a>
-                <a href="/notion/allposts/engineering"
-                    class="text-md md:text-2xl font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-gray-900 after:transition-all">
+                <a
+                    data-nav
+                    href="/notion/allposts/engineering"
+                    class="text-md md:text-2xl font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-gray-900 after:transition-all after:content-['']"
+                >
                     coding
                 </a>
-                <a href="/strava"
-                    class="text-md md:text-2xl font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-gray-900 after:transition-all">
+                <a
+                    data-nav
+                    href="/strava"
+                    class="text-md md:text-2xl font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-gray-900 after:transition-all after:content-['']"
+                >
                     strava
                 </a>
-                <a href="/manga"
-                    class="text-md md:text-2xl font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-gray-900 after:transition-all">
+                <a
+                    data-nav
+                    href="/manga"
+                    class="text-md md:text-2xl font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-gray-900 after:transition-all after:content-['']"
+                >
                     manga
                 </a>
             </nav>
         </div>
+        <script>
+            (function () {
+                var path = window.location.pathname;
+                var links = document.querySelectorAll("[data-nav]");
+                var hasMatch = false;
+
+                links.forEach(function (link) {
+                    var href = link.getAttribute("href");
+                    if (href !== "/" && path.startsWith(href)) {
+                        link.setAttribute("data-active", "true");
+                        hasMatch = true;
+                    }
+                });
+
+                if (!hasMatch && path === "/") {
+                    var homeLink = document.querySelector('[data-nav][href="/"]');
+                    if (homeLink) {
+                        homeLink.setAttribute("data-active", "true");
+                    }
+                }
+            })();
+        </script>
         {{template "content" .}}
     </div>
     <footer class="text-center text-xs pb-5">

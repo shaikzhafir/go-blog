@@ -127,6 +127,6 @@ func NewBlockRendererWithClient(client NotionClient) content.BlockRenderer {
 }
 
 // RenderBlock implements content.BlockRenderer
-func (r *notionBlockRenderer) RenderBlock(writer io.Writer, rawBlock []byte) error {
-	return r.client.ParseAndWriteNotionBlock(writer, rawBlock)
+func (r *notionBlockRenderer) RenderBlock(writer io.Writer, rawBlock []byte, postType string) error {
+	return r.client.ParseAndWriteNotionBlock(writer, rawBlock, postType)
 }

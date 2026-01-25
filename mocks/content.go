@@ -79,7 +79,7 @@ func NewMockBlockRenderer() content.BlockRenderer {
 }
 
 // RenderBlock implements content.BlockRenderer
-func (m *MockBlockRenderer) RenderBlock(writer io.Writer, rawBlock []byte) error {
+func (m *MockBlockRenderer) RenderBlock(writer io.Writer, rawBlock []byte, postType string) error {
 	_, err := writer.Write([]byte(fmt.Sprintf("<div>%s</div>", string(rawBlock))))
 	return err
 }

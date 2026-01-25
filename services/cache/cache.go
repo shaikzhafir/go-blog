@@ -278,7 +278,15 @@ func (jc *jsonFileClient) Get(key string) (*CacheEntry, error) {
 
 	var entry CacheEntry
 	if err := json.Unmarshal(data, &entry); err != nil {
-		return nil, fmt.Errorf("error unmarshalling cache entry: %w", err)
+		// Invalid cache format (likely old format), treat as cache miss
+		log.Info("invalid cache format for %s, treating as cache miss", key)
+		return nil, ErrCacheMiss
+	}
+
+	// Also treat as cache miss if the entry has no timestamp (old format that happened to unmarshal)
+	if entry.Timestamp.IsZero() {
+		log.Info("cache entry missing timestamp for %s, treating as cache miss", key)
+		return nil, ErrCacheMiss
 	}
 
 	return &entry, nil

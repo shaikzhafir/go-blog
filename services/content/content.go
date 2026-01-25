@@ -14,6 +14,7 @@ type PostEntry struct {
 	Title       string `json:"title"`
 	CreatedTime string `json:"created_time"`
 	Slug        string `json:"slug"`
+	PostType    string `json:"post_type,omitempty"`
 }
 
 // ReadingEntry represents a reading/book entry from any content source
@@ -52,5 +53,5 @@ type Source interface {
 // This is separate from Source because rendering may be reused across sources.
 type BlockRenderer interface {
 	// RenderBlock writes the HTML representation of a raw block to the writer.
-	RenderBlock(writer io.Writer, rawBlock []byte) error
+	RenderBlock(writer io.Writer, rawBlock []byte, postType string) error
 }
