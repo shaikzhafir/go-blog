@@ -68,7 +68,7 @@ func Test_MockBlockRenderer_RenderBlock(t *testing.T) {
 	renderer := NewMockBlockRenderer()
 
 	var buf bytes.Buffer
-	err := renderer.RenderBlock(&buf, []byte(`{"test":"data"}`))
+	err := renderer.RenderBlock(&buf, []byte(`{"test":"data"}`), "")
 
 	assert.NoError(t, err)
 	assert.Equal(t, `<div>{"test":"data"}</div>`, buf.String())

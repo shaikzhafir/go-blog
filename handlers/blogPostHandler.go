@@ -34,6 +34,12 @@ func (h *BlogPostHandler) GetAllPosts() http.HandlerFunc {
 			return
 		}
 
+		if filter != "" {
+			for i := range postEntries {
+				postEntries[i].PostType = filter
+			}
+		}
+
 		utils.Render(w, map[string]interface{}{"BlogEntries": postEntries}, "./templates/blogEntries.html", "./templates/slugEntry.html")
 	}
 }
@@ -45,7 +51,8 @@ func (h *BlogPostHandler) RenderPostHTML() http.HandlerFunc {
 		path := r.URL.Path
 		segments := strings.Split(path, "/")
 		blockID := segments[len(segments)-1]
-		utils.Render(w, map[string]interface{}{"BlockID": blockID}, "./templates/notionPost.html")
+		postType := r.URL.Query().Get("type")
+		utils.Render(w, map[string]interface{}{"BlockID": blockID, "PostType": postType}, "./templates/notionPost.html")
 	}
 }
 
@@ -57,6 +64,7 @@ func (h *BlogPostHandler) GetSinglePost() http.HandlerFunc {
 		path := r.URL.Path
 		segments := strings.Split(path, "/")
 		blockID := segments[len(segments)-1]
+		postType := r.URL.Query().Get("type")
 
 		blocks, err := h.cache.GetBlockChildren(ctx, blockID)
 		if err != nil {
@@ -66,7 +74,7 @@ func (h *BlogPostHandler) GetSinglePost() http.HandlerFunc {
 		}
 
 		for _, rawBlock := range blocks {
-			err := h.blockRenderer.RenderBlock(w, rawBlock)
+			err := h.blockRenderer.RenderBlock(w, rawBlock, postType)
 			if err != nil {
 				w.Write([]byte("error parsing block oopsie"))
 			}

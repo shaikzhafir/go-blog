@@ -140,7 +140,7 @@ type NotionClient interface {
 	GetSlugEntries(databaseID string, filter string) ([]SlugEntry, error)
 	GetReadingNowEntries(datasourceID string, filter string) ([]ReadingNow, error)
 	GetDatabaseID() string
-	ParseAndWriteNotionBlock(writer io.Writer, rawBlock []byte) error
+	ParseAndWriteNotionBlock(writer io.Writer, rawBlock []byte, postType string) error
 }
 
 // this should only be called by cache service to get the data
@@ -452,6 +452,7 @@ func (nc *notionClient) GetDatabaseID() string {
 type converter struct {
 	rawBlock []byte
 	writer   io.Writer
+	postType string
 }
 
 // RenderBulletedListItem implements Converter.
@@ -660,8 +661,15 @@ func (c *converter) RenderImage() error {
 	if len(block.Image.File.URL) == 0 {
 		return nil
 	}
-	block.Content = block.Image.File.URL
-	err = tmpl.Execute(c.writer, block)
+	renderData := struct {
+		Content  string
+		PostType string
+	}{
+		Content:  block.Image.File.URL,
+		PostType: c.postType,
+	}
+	log.Info("rendering image block with post type: %s", c.postType)
+	err = tmpl.Execute(c.writer, renderData)
 	if err != nil {
 		return err
 	}
@@ -695,10 +703,11 @@ func (c *converter) RenderCode() error {
 	return nil
 }
 
-func NewConverter(writer io.Writer, rawBlock []byte) Converter {
+func NewConverter(writer io.Writer, rawBlock []byte, postType string) Converter {
 	return &converter{
 		rawBlock: rawBlock,
 		writer:   writer,
+		postType: postType,
 	}
 }
 
@@ -717,7 +726,7 @@ type Converter interface {
 	RenderImage() error
 }
 
-func (nc *notionClient) ParseAndWriteNotionBlock(writer io.Writer, rawBlock []byte) error {
+func (nc *notionClient) ParseAndWriteNotionBlock(writer io.Writer, rawBlock []byte, postType string) error {
 	// unmarshal to find block type
 	var b models.Block
 	err := json.Unmarshal(rawBlock, &b)
@@ -725,7 +734,7 @@ func (nc *notionClient) ParseAndWriteNotionBlock(writer io.Writer, rawBlock []by
 		return err
 	}
 
-	c := NewConverter(writer, rawBlock)
+	c := NewConverter(writer, rawBlock, postType)
 
 	switch b.Type {
 	case "paragraph":

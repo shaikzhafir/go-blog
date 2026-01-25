@@ -66,6 +66,6 @@ func (*mockNotionClient) GetSlugEntries(databaseID string, filter string) ([]not
 }
 
 // ParseAndWriteNotionBlock implements notion.NotionClient.
-func (*mockNotionClient) ParseAndWriteNotionBlock(writer io.Writer, rawBlock []byte) error {
+func (*mockNotionClient) ParseAndWriteNotionBlock(writer io.Writer, rawBlock []byte, postType string) error {
 	panic("unimplemented")
 }

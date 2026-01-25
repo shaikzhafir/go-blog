@@ -1,6 +1,6 @@
 {{define "content"}}
 <div>
-  <div id="teehee" hx-get="/notion/content/{{.BlockID}}" hx-swap="innerHTML" hx-trigger="load">
+  <div id="teehee" hx-get="/notion/content/{{.BlockID}}{{if .PostType}}?type={{.PostType}}{{end}}" hx-swap="innerHTML" hx-trigger="load">
     <div class="htmx-indicator">
       loading... notion api is slow.. give chance..
     </div>

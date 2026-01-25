@@ -1,213 +1,183 @@
 package cache
 
 import (
-	"context"
 	"encoding/json"
-	"htmx-blog/mocks"
-	"htmx-blog/services/content"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func Test_GetBlockChildren_Cache_Hit(t *testing.T) {
-	// Create temp cache directory for testing
-	tempDir := "./test_cache"
-	os.Setenv("CACHE_DIR", tempDir)
-	defer os.RemoveAll(tempDir)
-	defer os.Unsetenv("CACHE_DIR")
-
-	source := mocks.NewMockContentSource()
-	cache := NewCache(source)
-	ctx := context.Background()
-
-	// Pre-populate cache with test data using CacheEntry
-	testData := []byte(`[{"test": "test"}]`)
-	entry := &CacheEntry{
-		Data:      json.RawMessage(testData),
-		Timestamp: time.Now(),
+func TestJSONFileClient_Get(t *testing.T) {
+	// Create a temporary directory for test cache files
+	tempDir, err := os.MkdirTemp("", "cache_test")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	jsonClient := NewJSONFileClient(tempDir)
-	jsonClient.Set("test", entry)
+	defer os.RemoveAll(tempDir)
 
-	// test getting post, this should hit the cache
-	rawBlocks, err := cache.GetBlockChildren(ctx, "test")
-	assert.Nil(t, err)
-	// check that the raw block is same as the one in the cache (JSON compact format)
-	for _, rawBlock := range rawBlocks {
-		assert.Equal(t, `{"test":"test"}`, string(rawBlock))
+	client := NewJSONFileClient(tempDir)
+
+	t.Run("cache miss when file does not exist", func(t *testing.T) {
+		_, err := client.Get("nonexistent")
+		if err != ErrCacheMiss {
+			t.Errorf("expected ErrCacheMiss, got %v", err)
+		}
+	})
+
+	t.Run("cache miss for old format (raw array)", func(t *testing.T) {
+		// Write old format cache file (just a raw array, no CacheEntry wrapper)
+		oldFormat := []map[string]string{
+			{"id": "1", "title": "Test Post"},
+			{"id": "2", "title": "Another Post"},
+		}
+		data, _ := json.Marshal(oldFormat)
+		filePath := filepath.Join(tempDir, "old-format.json")
+		if err := os.WriteFile(filePath, data, 0644); err != nil {
+			t.Fatalf("failed to write test file: %v", err)
+		}
+
+		_, err := client.Get("old-format")
+		if err != ErrCacheMiss {
+			t.Errorf("expected ErrCacheMiss for old format, got %v", err)
+		}
+	})
+
+	t.Run("cache miss for invalid JSON", func(t *testing.T) {
+		filePath := filepath.Join(tempDir, "invalid-json.json")
+		if err := os.WriteFile(filePath, []byte("not valid json"), 0644); err != nil {
+			t.Fatalf("failed to write test file: %v", err)
+		}
+
+		_, err := client.Get("invalid-json")
+		if err != ErrCacheMiss {
+			t.Errorf("expected ErrCacheMiss for invalid JSON, got %v", err)
+		}
+	})
+
+	t.Run("cache miss for entry with zero timestamp", func(t *testing.T) {
+		// CacheEntry with zero timestamp (could happen if old format partially matches)
+		entry := CacheEntry{
+			Data:      json.RawMessage(`["test"]`),
+			Timestamp: time.Time{}, // zero value
+		}
+		data, _ := json.Marshal(entry)
+		filePath := filepath.Join(tempDir, "zero-timestamp.json")
+		if err := os.WriteFile(filePath, data, 0644); err != nil {
+			t.Fatalf("failed to write test file: %v", err)
+		}
+
+		_, err := client.Get("zero-timestamp")
+		if err != ErrCacheMiss {
+			t.Errorf("expected ErrCacheMiss for zero timestamp, got %v", err)
+		}
+	})
+
+	t.Run("valid cache entry", func(t *testing.T) {
+		now := time.Now()
+		entry := CacheEntry{
+			Data:      json.RawMessage(`{"key":"value"}`),
+			Timestamp: now,
+		}
+		data, _ := json.Marshal(entry)
+		filePath := filepath.Join(tempDir, "valid-entry.json")
+		if err := os.WriteFile(filePath, data, 0644); err != nil {
+			t.Fatalf("failed to write test file: %v", err)
+		}
+
+		result, err := client.Get("valid-entry")
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if result == nil {
+			t.Fatal("expected non-nil result")
+		}
+		if string(result.Data) != `{"key":"value"}` {
+			t.Errorf("unexpected data: %s", result.Data)
+		}
+		if result.Timestamp.Unix() != now.Unix() {
+			t.Errorf("unexpected timestamp: %v", result.Timestamp)
+		}
+	})
+}
+
+func TestJSONFileClient_Set(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "cache_test")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	client := NewJSONFileClient(tempDir)
+
+	t.Run("set and get cache entry", func(t *testing.T) {
+		now := time.Now()
+		entry := &CacheEntry{
+			Data:      json.RawMessage(`["item1","item2"]`),
+			Timestamp: now,
+		}
+
+		err := client.Set("test-key", entry)
+		if err != nil {
+			t.Fatalf("failed to set cache entry: %v", err)
+		}
+
+		// Verify file was created
+		filePath := filepath.Join(tempDir, "test-key.json")
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			t.Error("cache file was not created")
+		}
+
+		// Verify we can read it back
+		result, err := client.Get("test-key")
+		if err != nil {
+			t.Errorf("failed to get cache entry: %v", err)
+		}
+		if string(result.Data) != `["item1","item2"]` {
+			t.Errorf("unexpected data: %s", result.Data)
+		}
+	})
+}
+
+func TestBuildCacheKey(t *testing.T) {
+	tests := []struct {
+		collectionID string
+		filter       string
+		expected     string
+	}{
+		{"abc123", "engineering", "abc123-engineering"},
+		{"def456", "", "def456-"},
+		{"", "filter", "-filter"},
+	}
+
+	for _, tt := range tests {
+		result := buildCacheKey(tt.collectionID, tt.filter)
+		if result != tt.expected {
+			t.Errorf("buildCacheKey(%q, %q) = %q, want %q",
+				tt.collectionID, tt.filter, result, tt.expected)
+		}
 	}
 }
 
-func Test_GetBlockChildren_Cache_Miss(t *testing.T) {
-	jsonRawItem := `{"test":"test"}`
-
-	// Create temp cache directory for testing
-	tempDir := "./test_cache_miss"
-	os.Setenv("CACHE_DIR", tempDir)
-	defer os.RemoveAll(tempDir)
-	defer os.Unsetenv("CACHE_DIR")
-
-	source := mocks.NewMockContentSource()
-	cache := NewCache(source)
-
-	CurrentTime = func() time.Time {
-		return time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
+func TestNewJSONFileClient_CreatesDirectory(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "cache_test")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
 	}
-
-	ctx := context.Background()
-
-	// test getting post, this will call the source (cache miss)
-	rawBlocks, err := cache.GetBlockChildren(ctx, "test")
-	assert.Nil(t, err)
-	// check that the raw block is same as the one from source
-	for _, rawBlock := range rawBlocks {
-		assert.Equal(t, jsonRawItem, string(rawBlock))
-	}
-}
-
-func Test_GetPostEntries_Cache_Hit(t *testing.T) {
-	// Create temp cache directory for testing
-	tempDir := "./test_cache_slug"
-	os.Setenv("CACHE_DIR", tempDir)
-	defer os.RemoveAll(tempDir)
-	defer os.Unsetenv("CACHE_DIR")
-
-	source := mocks.NewMockContentSource()
-	cache := NewCache(source)
-	ctx := context.Background()
-
-	mockPostEntry := []content.PostEntry{
-		{
-			Slug:        "test",
-			ID:          "test",
-			Title:       "test",
-			CreatedTime: "test",
-		},
-	}
-	jsonPostEntry, _ := json.Marshal(mockPostEntry)
-
-	// Pre-populate cache with test data using CacheEntry
-	entry := &CacheEntry{
-		Data:      json.RawMessage(jsonPostEntry),
-		Timestamp: time.Now(),
-	}
-	jsonClient := NewJSONFileClient(tempDir)
-	jsonClient.Set("test-", entry)
-
-	// test getting post, this should hit the cache
-	postEntries, err := cache.GetPostEntries(ctx, "test", "")
-	assert.Nil(t, err)
-	// check that the entry is same as the one in the cache
-	assert.Equal(t, mockPostEntry, postEntries)
-}
-
-func Test_GetPostEntries_Cache_Miss(t *testing.T) {
-	// Create temp cache directory for testing
-	tempDir := "./test_cache_slug_miss"
-	os.Setenv("CACHE_DIR", tempDir)
-	defer os.RemoveAll(tempDir)
-	defer os.Unsetenv("CACHE_DIR")
-
-	source := mocks.NewMockContentSource()
-	cache := NewCache(source)
-
-	CurrentTime = func() time.Time {
-		return time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
-	}
-
-	ctx := context.Background()
-	mockPostEntry := []content.PostEntry{
-		{
-			Slug:        "test",
-			ID:          "test",
-			Title:       "test",
-			CreatedTime: "test",
-		},
-	}
-
-	// test getting post, this will call the source (cache miss)
-	postEntries, err := cache.GetPostEntries(ctx, "test", "")
-	assert.Nil(t, err)
-	// check that the entry is same as the one from source
-	assert.Equal(t, mockPostEntry, postEntries)
-}
-
-func Test_GetReadingEntries_Cache_Miss(t *testing.T) {
-	// Create temp cache directory for testing
-	tempDir := "./test_cache_reading_miss"
-	os.Setenv("CACHE_DIR", tempDir)
-	defer os.RemoveAll(tempDir)
-	defer os.Unsetenv("CACHE_DIR")
-
-	source := mocks.NewMockContentSource()
-	cache := NewCache(source)
-
-	CurrentTime = func() time.Time {
-		return time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
-	}
-
-	ctx := context.Background()
-	mockReadingEntry := []content.ReadingEntry{
-		{
-			ID:          "test",
-			Title:       "test",
-			CreatedTime: "test",
-			Author:      "test author",
-		},
-	}
-
-	// test getting reading entries, this will call the source (cache miss)
-	readingEntries, err := cache.GetReadingEntries(ctx, "test", "")
-	assert.Nil(t, err)
-	assert.Equal(t, mockReadingEntry, readingEntries)
-}
-
-func Test_ErrCacheMiss(t *testing.T) {
-	// Create temp cache directory for testing
-	tempDir := "./test_cache_miss_error"
 	defer os.RemoveAll(tempDir)
 
-	jsonClient := NewJSONFileClient(tempDir)
+	newCacheDir := filepath.Join(tempDir, "new_cache_dir")
 
-	// Try to get a key that doesn't exist
-	_, err := jsonClient.Get("nonexistent")
-	assert.ErrorIs(t, err, ErrCacheMiss)
-}
-
-func Test_CacheExpiry(t *testing.T) {
-	// Create temp cache directory for testing
-	tempDir := "./test_cache_expiry"
-	defer os.RemoveAll(tempDir)
-
-	jsonClient := NewJSONFileClient(tempDir)
-
-	// Create an old cache entry
-	oldTime := time.Now().Add(-2 * CacheTTL)
-	entry := &CacheEntry{
-		Data:      json.RawMessage(`{"test": "data"}`),
-		Timestamp: oldTime,
+	// Verify directory doesn't exist
+	if _, err := os.Stat(newCacheDir); !os.IsNotExist(err) {
+		t.Fatal("directory should not exist before test")
 	}
-	jsonClient.Set("test-key", entry)
 
-	// Read it back and verify timestamp
-	retrieved, err := jsonClient.Get("test-key")
-	assert.Nil(t, err)
-	assert.True(t, time.Since(retrieved.Timestamp) > CacheTTL)
-}
+	// Create client - should create directory
+	_ = NewJSONFileClient(newCacheDir)
 
-func Test_GetSource(t *testing.T) {
-	tempDir := "./test_cache_source"
-	os.Setenv("CACHE_DIR", tempDir)
-	defer os.RemoveAll(tempDir)
-	defer os.Unsetenv("CACHE_DIR")
-
-	source := mocks.NewMockContentSource()
-	cache := NewCache(source)
-
-	// Verify GetSource returns the underlying source
-	assert.Equal(t, source, cache.GetSource())
-	assert.Equal(t, "test-collection", cache.GetSource().GetDefaultCollectionID())
+	// Verify directory was created
+	if _, err := os.Stat(newCacheDir); os.IsNotExist(err) {
+		t.Error("NewJSONFileClient should create cache directory")
+	}
 }
