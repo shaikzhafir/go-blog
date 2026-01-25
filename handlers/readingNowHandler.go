@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,27 +11,24 @@ import (
 	log "htmx-blog/logging"
 	"htmx-blog/models"
 	"htmx-blog/services/cache"
-	"htmx-blog/services/notion"
 	"htmx-blog/utils"
 )
 
 type ReadingNowHandler struct {
-	cache        cache.Cache
-	notionClient notion.NotionClient
+	cache cache.Cache
 }
 
-func NewReadingNowHandler(cache cache.Cache, notionClient notion.NotionClient) *ReadingNowHandler {
+func NewReadingNowHandler(cache cache.Cache) *ReadingNowHandler {
 	return &ReadingNowHandler{
-		cache:        cache,
-		notionClient: notionClient,
+		cache: cache,
 	}
 }
 
 func (h *ReadingNowHandler) GetReadingNow() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Info("getting reading now")
-		databaseID := h.notionClient.GetDatabaseID()
-		readingNowEntries, err := h.cache.GetReadingNowEntries(r.Context(), databaseID, "speaking")
+		collectionID := h.cache.GetSource().GetDefaultCollectionID()
+		readingEntries, err := h.cache.GetReadingEntries(r.Context(), collectionID, "speaking")
 		if err != nil {
 			log.Error("error getting reading now entries: %v", err)
 			w.Write([]byte("error getting reading now entries"))
@@ -39,7 +36,7 @@ func (h *ReadingNowHandler) GetReadingNow() http.HandlerFunc {
 		}
 
 		readingNowBlocks := []models.ReadingNowBlock{}
-		for _, entry := range readingNowEntries {
+		for _, entry := range readingEntries {
 			var readingNowBlock models.ReadingNowBlock
 			readingNowBlock.Title = entry.Title
 			readingNowBlock.Author = entry.Author
@@ -69,7 +66,7 @@ func StoreNotionImage(rawBlocks []json.RawMessage, i int) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	imageBytes, err := ioutil.ReadAll(resp.Body)
+	imageBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("error reading image bytes: %v", err)
 	}
