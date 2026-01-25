@@ -19,7 +19,7 @@ jobs:
           go-version: 1.22 # Specify the Go version you need
 
       - name: Build Go Binary
-        run: go build -o htmx-blog
+        run: go build -o htmx-blog cmd/server/main.go
 
       - name: Setup SSH
         run: |
