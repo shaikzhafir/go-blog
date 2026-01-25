@@ -11,18 +11,9 @@ import (
 	"htmx-blog/services/strava"
 	"net/http"
 	"os"
-
-	"github.com/redis/go-redis/v9"
 )
 
 func main() {
-	// connect to redis server
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: os.Getenv("REDIS_PASSWORD"),
-		DB:       0,
-	})
-
 	mux := http.NewServeMux()
 	log.Info("Starting server, dev  %s", os.Getenv("DEV"))
 	// for js and css files
@@ -33,13 +24,16 @@ func main() {
 		mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir("./images"))))
 	}
 	handler := markdownHandler.NewHandler()
-	notionClient := notion.NewNotionClient()
 	stravaClient := strava.NewStravaService()
 	mangaService := manga.NewMangaService()
-	cacheService := cache.NewCache(rdb, notionClient)
 
-	blogPostHandler := handlers.NewBlogPostHandler(notionClient, cacheService)
-	readingNowHandler := handlers.NewReadingNowHandler(cacheService, notionClient)
+	// Create content source and cache (decoupled from specific implementation)
+	contentSource := notion.NewSource()
+	cacheService := cache.NewCache(contentSource)
+	blockRenderer := notion.NewBlockRenderer()
+
+	blogPostHandler := handlers.NewBlogPostHandler(cacheService, blockRenderer)
+	readingNowHandler := handlers.NewReadingNowHandler(cacheService)
 	stravaHandler := handlers.NewStravaHandler(stravaClient)
 
 	mux.HandleFunc("GET /reviews", handler.GetReviewsList())

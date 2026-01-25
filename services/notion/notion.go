@@ -143,9 +143,8 @@ type NotionClient interface {
 	ParseAndWriteNotionBlock(writer io.Writer, rawBlock []byte) error
 }
 
-// this should only be called by redis service to get the data
-// from notion and store it in redis
-// for now , no redis
+// this should only be called by cache service to get the data
+// from notion and store it in JSON file cache
 func NewNotionClient() NotionClient {
 	notionToken := os.Getenv("NOTION_TOKEN")
 	if notionToken == "" {

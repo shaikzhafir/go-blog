@@ -6,39 +6,39 @@ import (
 
 	log "htmx-blog/logging"
 	"htmx-blog/services/cache"
-	"htmx-blog/services/notion"
+	"htmx-blog/services/content"
 	"htmx-blog/utils"
 )
 
 type BlogPostHandler struct {
-	cache        cache.Cache
-	notionClient notion.NotionClient
+	cache         cache.Cache
+	blockRenderer content.BlockRenderer
 }
 
-func NewBlogPostHandler(notionClient notion.NotionClient, cache cache.Cache) *BlogPostHandler {
+func NewBlogPostHandler(cache cache.Cache, renderer content.BlockRenderer) *BlogPostHandler {
 	return &BlogPostHandler{
-		cache:        cache,
-		notionClient: notionClient,
+		cache:         cache,
+		blockRenderer: renderer,
 	}
 }
 
 func (h *BlogPostHandler) GetAllPosts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		filter := r.PathValue("filter")
-		databaseID := h.notionClient.GetDatabaseID()
+		collectionID := h.cache.GetSource().GetDefaultCollectionID()
 
-		slugEntries, err := h.cache.GetSlugEntries(r.Context(), databaseID, filter)
+		postEntries, err := h.cache.GetPostEntries(r.Context(), collectionID, filter)
 		if err != nil {
-			log.Error("error getting slug entries: %v", err)
-			w.Write([]byte("error getting slug entries"))
+			log.Error("error getting post entries: %v", err)
+			w.Write([]byte("error getting post entries"))
 			return
 		}
 
-		utils.Render(w, map[string]interface{}{"BlogEntries": slugEntries}, "./templates/blogEntries.html", "./templates/slugEntry.html")
+		utils.Render(w, map[string]interface{}{"BlogEntries": postEntries}, "./templates/blogEntries.html", "./templates/slugEntry.html")
 	}
 }
 
-func (n *BlogPostHandler) RenderPostHTML() http.HandlerFunc {
+func (h *BlogPostHandler) RenderPostHTML() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// get post id from request
 		// TODO the blockID will be the slug name, and conversion of slug name to blockID done here
@@ -50,7 +50,7 @@ func (n *BlogPostHandler) RenderPostHTML() http.HandlerFunc {
 }
 
 // GetSinglePost is called when routing to a page with a single notion post
-func (n *BlogPostHandler) GetSinglePost() http.HandlerFunc {
+func (h *BlogPostHandler) GetSinglePost() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		// get post id from request
@@ -58,26 +58,18 @@ func (n *BlogPostHandler) GetSinglePost() http.HandlerFunc {
 		segments := strings.Split(path, "/")
 		blockID := segments[len(segments)-1]
 
-		deserialized, err := n.cache.GetPostByID(ctx, blockID)
+		blocks, err := h.cache.GetBlockChildren(ctx, blockID)
 		if err != nil {
 			log.Error("error getting post by id: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		for _, rawBlock := range deserialized {
-			err := n.notionClient.ParseAndWriteNotionBlock(w, rawBlock)
+		for _, rawBlock := range blocks {
+			err := h.blockRenderer.RenderBlock(w, rawBlock)
 			if err != nil {
 				w.Write([]byte("error parsing block oopsie"))
 			}
 		}
-
-		// get post from notion
-		// it should return a list of rawblocks
-
-		// first check if blockID exists in redis cache
-		// if it does, return the cached html
-		// if it doesn't, get the rawblocks from notion
-
 	}
 }
