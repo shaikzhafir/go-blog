@@ -1,0 +1,88 @@
+@startuml content-abstraction
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 11
+
+title Content abstraction – interfaces and implementations
+
+package "content (interfaces)" {
+  interface "Source" as Source {
+    + GetBlockChildren(ctx, blockID) []RawMessage
+    + GetPostEntries(ctx, collectionID, filter) []PostEntry
+    + GetReadingEntries(ctx, collectionID, filter) []ReadingEntry
+    + GetDefaultCollectionID() string
+    + ProcessBlockForStorage(blocks, index) error
+  }
+
+  interface "BlockFetcher" as BlockFetcher {
+    + GetBlockChildren(ctx, blockID) []RawMessage
+  }
+
+  interface "BlockRenderer" as BlockRenderer {
+    + RenderBlock(writer, rawBlock, postType) error
+  }
+
+  interface "PageRenderer" as PageRenderer {
+    + RenderPage(ctx, w, pageIDOrSlug, opts) error
+  }
+
+  class "RenderOptions" as RenderOptions {
+    + PostType string
+  }
+
+  class "PostEntry" as PostEntry
+  class "ReadingEntry" as ReadingEntry
+}
+
+package "implementations" {
+  class "blockPageRenderer" as blockPageRenderer {
+    - fetcher BlockFetcher
+    - renderer BlockRenderer
+    + RenderPage(ctx, w, pageIDOrSlug, opts) error
+  }
+
+  class "notionSource" as notionSource {
+    - client NotionClient
+    + GetBlockChildren(...)
+    + GetPostEntries(...)
+    + GetReadingEntries(...)
+    + GetDefaultCollectionID()
+    + ProcessBlockForStorage(...)
+  }
+
+  class "notionBlockRenderer" as notionBlockRenderer {
+    - client NotionClient
+    + RenderBlock(writer, rawBlock, postType) error
+  }
+
+  class "cache" as cache <<Cache>> {
+    - source Source
+    - jsonClient JSONClient
+    + GetBlockChildren(ctx, blockID) []RawMessage
+    + GetPostEntries(...)
+    + GetReadingEntries(...)
+    + GetSource() Source
+  }
+}
+
+Source <|.. notionSource
+BlockFetcher <|.. cache : Cache implements
+BlockRenderer <|.. notionBlockRenderer
+PageRenderer <|.. blockPageRenderer
+
+blockPageRenderer o-- BlockFetcher : uses
+blockPageRenderer o-- BlockRenderer : uses
+cache o-- Source : wraps
+notionSource o-- NotionClient : uses
+notionBlockRenderer o-- NotionClient : uses
+
+PageRenderer ..> RenderOptions : opts
+
+note right of PageRenderer
+  Handlers depend only on this
+  to render a single post.
+  Backend (Notion/Markdown/CMS)
+  can be swapped in main.
+end note
+
+@enduml

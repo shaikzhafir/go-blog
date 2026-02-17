@@ -55,3 +55,22 @@ type BlockRenderer interface {
 	// RenderBlock writes the HTML representation of a raw block to the writer.
 	RenderBlock(writer io.Writer, rawBlock []byte, postType string) error
 }
+
+// BlockFetcher fetches raw block data for a page. Implemented by cache.Cache
+// and can be implemented by other backends (e.g. Markdown loader, CMS client).
+type BlockFetcher interface {
+	GetBlockChildren(ctx context.Context, blockID string) ([]json.RawMessage, error)
+}
+
+// RenderOptions holds options when rendering a single page (e.g. post type).
+type RenderOptions struct {
+	PostType string
+}
+
+// PageRenderer is the interface handlers use to render a full page to HTML.
+// Implementations can use Notion blocks, Markdown, or any other backend;
+// handlers depend only on this interface, not on a specific data source.
+type PageRenderer interface {
+	// RenderPage writes the full HTML body for the given page (by ID or slug) to w.
+	RenderPage(ctx context.Context, w io.Writer, pageIDOrSlug string, opts RenderOptions) error
+}

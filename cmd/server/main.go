@@ -6,6 +6,7 @@ import (
 	"htmx-blog/handlers/markdownHandler"
 	log "htmx-blog/logging"
 	"htmx-blog/services/cache"
+	"htmx-blog/services/content"
 	"htmx-blog/services/manga"
 	"htmx-blog/services/notion"
 	"htmx-blog/services/strava"
@@ -31,18 +32,18 @@ func main() {
 	contentSource := notion.NewSource()
 	cacheService := cache.NewCache(contentSource)
 	blockRenderer := notion.NewBlockRenderer()
+	pageRenderer := content.NewPageRenderer(cacheService, blockRenderer)
 
-	blogPostHandler := handlers.NewBlogPostHandler(cacheService, blockRenderer)
+	blogPostHandler := handlers.NewBlogPostHandler(cacheService, pageRenderer)
 	readingNowHandler := handlers.NewReadingNowHandler(cacheService)
 	stravaHandler := handlers.NewStravaHandler(stravaClient)
 
 	mux.HandleFunc("GET /reviews", handler.GetReviewsList())
 	mux.HandleFunc("GET /reviews/", handler.GetReviewByTitle())
 	mux.HandleFunc("GET /blogposts", handler.GetBlogList())
-	mux.HandleFunc("GET /notion/allposts/{filter}", blogPostHandler.GetAllPosts())
-	mux.HandleFunc("GET /notion/posts/", blogPostHandler.RenderPostHTML())
-	mux.HandleFunc("GET /notion/content/", blogPostHandler.GetSinglePost())
-	mux.HandleFunc("GET /readingNow", readingNowHandler.GetReadingNow())
+	mux.HandleFunc("GET /notion/allposts/{filter}", blogPostHandler.ListPosts())
+	mux.HandleFunc("GET /notion/posts/", blogPostHandler.GetPostPage())
+	mux.HandleFunc("GET /notion/content/", blogPostHandler.GetPostContent())
 	mux.HandleFunc("GET /strava", stravaHandler.GetStravaHandler())
 
 	// Initialize manga handler

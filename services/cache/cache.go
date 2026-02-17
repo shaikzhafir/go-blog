@@ -13,7 +13,8 @@ import (
 
 // Sentinel errors for cache operations
 var (
-	ErrCacheMiss = errors.New("cache miss")
+	ErrCacheMiss   = errors.New("cache miss")
+	ErrSlugNotFound = errors.New("slug not found")
 )
 
 // CurrentTime is a function that returns the current time, can be mocked in tests
@@ -33,6 +34,11 @@ type Cache interface {
 
 	// GetPostEntries returns cached post entries for a collection with optional filter.
 	GetPostEntries(ctx context.Context, collectionID, filter string) ([]content.PostEntry, error)
+
+	// GetBlockIDBySlug returns the block/page ID for the given slug (subtitle) in the collection.
+	// filter is the same optional filter used when listing posts (e.g. post type). Returns empty
+	// string and ErrSlugNotFound if no post has that slug.
+	GetBlockIDBySlug(ctx context.Context, collectionID, slug, filter string) (string, error)
 
 	// GetReadingEntries returns cached reading entries for a collection with filter.
 	GetReadingEntries(ctx context.Context, collectionID, filter string) ([]content.ReadingEntry, error)
@@ -127,6 +133,21 @@ func (c *cache) GetPostEntries(ctx context.Context, collectionID, filter string)
 	})
 
 	return entries, nil
+}
+
+// GetBlockIDBySlug looks up the block ID for the given slug by fetching post entries
+// for the given filter and finding the entry whose Slug matches.
+func (c *cache) GetBlockIDBySlug(ctx context.Context, collectionID, slug, filter string) (string, error) {
+	entries, err := c.GetPostEntries(ctx, collectionID, filter)
+	if err != nil {
+		return "", err
+	}
+	for _, e := range entries {
+		if e.Slug == slug {
+			return e.ID, nil
+		}
+	}
+	return "", ErrSlugNotFound
 }
 
 // GetReadingEntries retrieves reading entries from cache or fetches from source

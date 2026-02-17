@@ -49,7 +49,7 @@ func (h *ReadingNowHandler) GetReadingNow() http.HandlerFunc {
 		log.Info("reading now blocks: %v", readingNowBlocks)
 		utils.Render(w, map[string]interface{}{
 			"Books": readingNowBlocks,
-		}, "./templates/readingNow.html")
+		}, "./templates/pages/reading-now.html")
 	}
 }
 

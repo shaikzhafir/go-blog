@@ -1,0 +1,51 @@
+@startuml sequence-single-post
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam defaultFontSize 11
+
+title Sequence – render single post (GET /notion/content/{id})
+
+actor User
+participant "HTTP" as HTTP
+participant "BlogPostHandler" as Handler
+participant "PageRenderer\n(content)" as PageRenderer
+participant "blockPageRenderer" as Impl
+participant "Cache" as Cache
+participant "Source\n(notionSource)" as Source
+participant "BlockRenderer\n(notion)" as BlockRenderer
+participant "Templates" as Templates
+
+User -> HTTP : GET /notion/content/{id}?type=...
+HTTP -> Handler : GetPostContent()
+
+Handler -> Handler : parse pageIDOrSlug, postType
+Handler -> PageRenderer : RenderPage(ctx, w, pageIDOrSlug, RenderOptions{PostType})
+
+PageRenderer -> Impl : RenderPage(...)
+
+Impl -> Cache : GetBlockChildren(ctx, pageIDOrSlug)
+
+alt cache hit
+  Cache -> Impl : []RawMessage (blocks)
+else cache miss
+  Cache -> Source : GetBlockChildren(ctx, pageIDOrSlug)
+  Source -> Source : Notion API: blocks
+  Source -> Cache : blocks
+  Cache -> Cache : ProcessBlockForStorage (e.g. store images)
+  Cache -> Cache : persist to JSON
+  Cache -> Impl : []RawMessage (blocks)
+end
+
+loop for each block
+  Impl -> BlockRenderer : RenderBlock(w, rawBlock, postType)
+  BlockRenderer -> Templates : execute block template (e.g. image, paragraph)
+  Templates -> BlockRenderer : HTML fragment
+  BlockRenderer -> Impl : write to w
+end
+
+Impl -> PageRenderer : nil (success)
+PageRenderer -> Handler : nil
+Handler -> HTTP : response body (HTML)
+HTTP -> User : HTML
+
+@enduml

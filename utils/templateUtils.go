@@ -10,7 +10,7 @@ import (
 
 func Render(w http.ResponseWriter, data map[string]interface{}, paths ...string) {
 	// First parse the layout template
-	layoutPath := "./templates/main.layout.html"
+	layoutPath := "./templates/layout/main.html"
 	
 	// Combine all templates that need to be parsed
 	allPaths := append([]string{layoutPath}, paths...)

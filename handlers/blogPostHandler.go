@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -12,17 +13,21 @@ import (
 
 type BlogPostHandler struct {
 	cache         cache.Cache
-	blockRenderer content.BlockRenderer
+	pageRenderer content.PageRenderer
 }
 
-func NewBlogPostHandler(cache cache.Cache, renderer content.BlockRenderer) *BlogPostHandler {
+// NewBlogPostHandler creates a handler that uses cache for list views and
+// pageRenderer for rendering single posts. Both are backed by the content
+// abstraction, so the data source (Notion, Markdown, etc.) can be swapped.
+func NewBlogPostHandler(cache cache.Cache, pageRenderer content.PageRenderer) *BlogPostHandler {
 	return &BlogPostHandler{
 		cache:         cache,
-		blockRenderer: renderer,
+		pageRenderer: pageRenderer,
 	}
 }
 
-func (h *BlogPostHandler) GetAllPosts() http.HandlerFunc {
+// ListPosts returns a handler that renders the list of posts for the given filter.
+func (h *BlogPostHandler) ListPosts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		filter := r.PathValue("filter")
 		collectionID := h.cache.GetSource().GetDefaultCollectionID()
@@ -40,44 +45,67 @@ func (h *BlogPostHandler) GetAllPosts() http.HandlerFunc {
 			}
 		}
 
-		utils.Render(w, map[string]interface{}{"BlogEntries": postEntries}, "./templates/blogEntries.html", "./templates/slugEntry.html")
+		utils.Render(w, map[string]interface{}{"BlogEntries": postEntries}, "./templates/pages/notion-list.html", "./templates/partials/post-entry.html")
 	}
 }
 
-func (h *BlogPostHandler) RenderPostHTML() http.HandlerFunc {
+// GetPostPage returns a handler that serves the post page shell (used when navigating to a post by subtitle/slug;
+// actual content is loaded via htmx from GetPostContent). Renders a 404 page if the slug does not exist.
+func (h *BlogPostHandler) GetPostPage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// get post id from request
-		// TODO the blockID will be the slug name, and conversion of slug name to blockID done here
 		path := r.URL.Path
 		segments := strings.Split(path, "/")
-		blockID := segments[len(segments)-1]
-		postType := r.URL.Query().Get("type")
-		utils.Render(w, map[string]interface{}{"BlockID": blockID, "PostType": postType}, "./templates/notionPost.html")
-	}
-}
-
-// GetSinglePost is called when routing to a page with a single notion post
-func (h *BlogPostHandler) GetSinglePost() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		// get post id from request
-		path := r.URL.Path
-		segments := strings.Split(path, "/")
-		blockID := segments[len(segments)-1]
+		subtitle := segments[len(segments)-1]
 		postType := r.URL.Query().Get("type")
 
-		blocks, err := h.cache.GetBlockChildren(ctx, blockID)
+		collectionID := h.cache.GetSource().GetDefaultCollectionID()
+		_, err := h.cache.GetBlockIDBySlug(r.Context(), collectionID, subtitle, postType)
 		if err != nil {
-			log.Error("error getting post by id: %v", err)
+			if errors.Is(err, cache.ErrSlugNotFound) {
+				w.WriteHeader(http.StatusNotFound)
+				utils.Render(w, nil, "./templates/pages/not-found.html")
+				return
+			}
+			log.Error("error resolving slug for post page: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("error loading post"))
 			return
 		}
 
-		for _, rawBlock := range blocks {
-			err := h.blockRenderer.RenderBlock(w, rawBlock, postType)
-			if err != nil {
-				w.Write([]byte("error parsing block oopsie"))
+		utils.Render(w, map[string]interface{}{"Slug": subtitle, "PostType": postType}, "./templates/pages/notion-post.html")
+	}
+}
+
+// GetPostContent returns a handler that renders a single post's content (used by htmx to swap
+// into the post page). The URL segment is the post subtitle (slug); it is resolved to a block ID
+// via the cache. Uses the content PageRenderer interface, so the backend is interchangeable.
+func (h *BlogPostHandler) GetPostContent() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		segments := strings.Split(path, "/")
+		slug := segments[len(segments)-1]
+		postType := r.URL.Query().Get("type")
+
+		collectionID := h.cache.GetSource().GetDefaultCollectionID()
+		blockID, err := h.cache.GetBlockIDBySlug(r.Context(), collectionID, slug, postType)
+		if err != nil {
+			if errors.Is(err, cache.ErrSlugNotFound) {
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte("post not found"))
+				return
 			}
+			log.Error("error resolving slug: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("error loading post"))
+			return
+		}
+
+		err = h.pageRenderer.RenderPage(r.Context(), w, blockID, content.RenderOptions{PostType: postType})
+		if err != nil {
+			log.Error("error rendering post: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("error rendering post"))
+			return
 		}
 	}
 }

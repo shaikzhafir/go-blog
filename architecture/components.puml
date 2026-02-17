@@ -1,0 +1,71 @@
+@startuml components
+!theme plain
+skinparam packageStyle rectangle
+skinparam defaultFontSize 11
+
+title Blog – component overview
+
+package "cmd" {
+  [main] as main
+}
+
+package "handlers\n(use only content abstractions)" {
+  [BlogPostHandler] as blog
+  [ReadingNowHandler] as reading
+  [markdownHandler] as md
+  [mangaHandler] as manga
+  [StravaHandler] as strava
+}
+
+' Content package: interfaces only. Handlers depend on these, not on Notion.
+package "services/content\n(interfaces)" {
+  interface "PageRenderer" as pageRenderer
+  interface "Source" as source
+  interface "BlockFetcher" as blockFetcher
+  interface "BlockRenderer" as blockRenderer
+  [NewPageRenderer\n(fetcher + renderer)] as newPageRenderer
+}
+
+' Cache implements BlockFetcher and wraps a Source (so it fetches from that source on miss)
+package "services/cache" {
+  [Cache] as cache
+}
+
+' Notion is the current implementation of the content interfaces
+package "services/notion\n(implements content)" {
+  [notionSource] as notionSource
+  [notionBlockRenderer] as notionBlockRenderer
+  [NotionClient] as notionClient
+}
+
+package "external" {
+  [Notion API] as notionAPI
+  [Templates] as templates
+}
+
+main --> blog : creates
+main --> reading : creates
+main --> md : creates
+main --> manga : creates
+main --> strava : creates
+
+main --> cache : NewCache(notionSource)
+main --> newPageRenderer : NewPageRenderer(cache, notionBlockRenderer)
+blog --> cache : list posts, collection ID
+blog --> pageRenderer : render single post
+reading --> cache : reading entries
+
+cache ..|> blockFetcher : implements
+cache --> source : fetch on miss
+notionSource ..|> source : implements
+notionBlockRenderer ..|> blockRenderer : implements
+newPageRenderer --> blockFetcher : fetch blocks
+newPageRenderer --> blockRenderer : render each block
+notionSource --> notionClient
+notionBlockRenderer --> notionClient
+notionClient --> notionAPI
+
+blog --> templates
+reading --> templates
+
+@enduml
