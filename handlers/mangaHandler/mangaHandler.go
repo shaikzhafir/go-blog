@@ -36,7 +36,7 @@ func (h *mangaHandler) GetMangaPage() http.HandlerFunc {
 			return
 		}
 
-		utils.Render(w, map[string]interface{}{"Manga": mangaData}, "./templates/manga.page.html")
+		utils.Render(w, map[string]interface{}{"Manga": mangaData}, "./templates/pages/manga.html")
 	}
 }
 

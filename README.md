@@ -1,25 +1,26 @@
 # go-htmx-blog
 
-# steps to run this site
-
-1. go mod tidy
-2. go run main.go
-3. (OPTIONAL) To setup hot reloading, give execute permission to the entr-reload.sh script, and run it instead of go run main.go
-
-## To run tailwindCSS with some custom presets
-
-1. Follow steps [here](https://tailwindcss.com/blog/standalone-cli) to download tailwind executable
-2. After initializing, run this command in a new tab (which is based on the file paths in this repo) to develop locally
+## Run the site
 
 ```bash
- ./tailwindcss -i input.css -o ./static/output.css --watch
+make deps          # go mod tidy
+make run           # build and run server
 ```
 
-3. To prepare for production,
+**Development (hot reload):** run in two terminals:
 
 ```bash
-./tailwindcss -i input.css -o ./static/output.css --minify
+make dev           # Go server with entr (reloads on .go / .html changes)
+make tailwind      # Tailwind CSS watch (rebuilds on input.css / template changes)
 ```
+
+See `make help` for all targets.
+
+## Tailwind CSS
+
+1. Download the [Tailwind standalone CLI](https://tailwindcss.com/blog/standalone-cli) and place `tailwindcss` in the repo root (or set `TAILWIND_CLI` in the Makefile).
+2. **Dev:** `make tailwind` (watch mode).
+3. **Production:** `make css` (minified build).
 
 # credits
 - running data provided by [Strava](https://www.strava.com/)

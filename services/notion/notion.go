@@ -464,7 +464,7 @@ func (c *converter) RenderBulletedListItem() error {
 		return err
 	}
 	// load template
-	templatePath, err := filepath.Abs("./templates/notionBlocks/bulleted_list_item.html")
+	templatePath, err := filepath.Abs("./templates/notion/blocks/bulleted_list_item.html")
 	if err != nil {
 		log.Error("error getting absolute path: %v", err)
 		return err
@@ -498,7 +498,7 @@ func (c *converter) RenderHeading1() error {
 		return err
 	}
 	// load template
-	templatePath, err := filepath.Abs("./templates/notionBlocks/heading_1.html")
+	templatePath, err := filepath.Abs("./templates/notion/blocks/heading_1.html")
 	if err != nil {
 		log.Error("error getting absolute path: %v", err)
 		return err
@@ -527,7 +527,7 @@ func (c *converter) RenderHeading2() error {
 		return err
 	}
 	// load template
-	templatePath, err := filepath.Abs("./templates/notionBlocks/heading_2.html")
+	templatePath, err := filepath.Abs("./templates/notion/blocks/heading_2.html")
 	if err != nil {
 		log.Error("error getting absolute path: %v", err)
 		return err
@@ -556,7 +556,7 @@ func (c *converter) RenderHeading3() error {
 		return err
 	}
 	// load template
-	templatePath, err := filepath.Abs("./templates/notionBlocks/heading_3.html")
+	templatePath, err := filepath.Abs("./templates/notion/blocks/heading_3.html")
 	if err != nil {
 		log.Error("error getting absolute path: %v", err)
 		return err
@@ -598,12 +598,12 @@ func (c *converter) RenderParagraph() error {
 		htmlBlock := models.HTMLBlock{}
 		// load template
 		// if it has link, use link template
-		templatePath, err := filepath.Abs("./templates/notionBlocks/paragraph.html")
+		templatePath, err := filepath.Abs("./templates/notion/blocks/paragraph.html")
 		if err != nil {
 			return err
 		}
 		if richText.Text.Link.URL != "" {
-			templatePath, err = filepath.Abs("./templates/notionBlocks/link.html")
+			templatePath, err = filepath.Abs("./templates/notion/blocks/link.html")
 			if err != nil {
 				return err
 			}
@@ -650,7 +650,7 @@ func (c *converter) RenderImage() error {
 		return err
 	}
 	// load template
-	templatePath, err := filepath.Abs("./templates/notionBlocks/image.html")
+	templatePath, err := filepath.Abs("./templates/notion/blocks/image.html")
 	if err != nil {
 		return err
 	}
@@ -684,7 +684,7 @@ func (c *converter) RenderCode() error {
 		return err
 	}
 	// load template
-	templatePath, err := filepath.Abs("./templates/notionBlocks/code.html")
+	templatePath, err := filepath.Abs("./templates/notion/blocks/code.html")
 	if err != nil {
 		return err
 	}

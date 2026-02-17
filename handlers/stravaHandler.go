@@ -27,7 +27,7 @@ func (h *StravaHandler) GetStravaHandler() http.HandlerFunc {
 			return
 		}
 
-		utils.Render(w, map[string]interface{}{"Activities": activities}, "./templates/strava.page.html")
+		utils.Render(w, map[string]interface{}{"Activities": activities}, "./templates/pages/strava.html")
 	}
 }
 

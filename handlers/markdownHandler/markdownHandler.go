@@ -112,7 +112,7 @@ func (h *markdownHandler) GetReviewsList() http.HandlerFunc {
 		// write the list of reviews to the page
 		// return the page
 
-		tmpl, err := template.ParseFiles("./templates/blogEntries.html", "./templates/blogEntry.html")
+		tmpl, err := template.ParseFiles("./templates/blog/entries.html", "./templates/partials/blog-entry.html")
 		if err != nil {
 			w.Write([]byte(err.Error()))
 		}
@@ -125,7 +125,7 @@ func (h *markdownHandler) GetReviewsList() http.HandlerFunc {
 			blogPosts[i].PublishedStr = blogPosts[i].Published.Format("2-January-2006")
 		}
 
-		err = tmpl.Execute(w, blogPosts)
+		err = tmpl.ExecuteTemplate(w, "entries.html", blogPosts)
 		if err != nil {
 			w.Write([]byte(err.Error()))
 		}
@@ -195,7 +195,7 @@ func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
 				Content:   template.HTML(buf.String()),
 			}
 
-			tmpl, err := template.ParseFiles("./templates/blogPost.html")
+			tmpl, err := template.ParseFiles("./templates/blog/post.html")
 			if err != nil {
 				w.Write([]byte(err.Error()))
 			}
