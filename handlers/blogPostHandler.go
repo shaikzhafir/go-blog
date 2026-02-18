@@ -3,13 +3,54 @@ package handlers
 import (
 	"errors"
 	"net/http"
-	"strings"
+	"strconv"
 
 	log "htmx-blog/logging"
 	"htmx-blog/services/cache"
 	"htmx-blog/services/content"
 	"htmx-blog/utils"
 )
+
+const defaultPageSize = 10
+const maxPageSize = 100
+
+// buildPageList returns page numbers to show in the nav; 0 means ellipsis.
+func buildPageList(current, totalPages int) []int {
+	if totalPages <= 0 {
+		return nil
+	}
+	if totalPages <= 7 {
+		out := make([]int, totalPages)
+		for i := range out {
+			out[i] = i + 1
+		}
+		return out
+	}
+	var out []int
+	out = append(out, 1)
+	// window around current: current-2 to current+2, clamped
+	lo := current - 2
+	if lo < 2 {
+		lo = 2
+	}
+	hi := current + 2
+	if hi > totalPages-1 {
+		hi = totalPages - 1
+	}
+	if lo > 2 {
+		out = append(out, 0)
+	}
+	for p := lo; p <= hi; p++ {
+		out = append(out, p)
+	}
+	if hi < totalPages-1 {
+		out = append(out, 0)
+	}
+	if totalPages > 1 {
+		out = append(out, totalPages)
+	}
+	return out
+}
 
 type BlogPostHandler struct {
 	cache         cache.Cache
@@ -26,7 +67,22 @@ func NewBlogPostHandler(cache cache.Cache, pageRenderer content.PageRenderer) *B
 	}
 }
 
-// ListPosts returns a handler that renders the list of posts for the given filter.
+// Pagination holds data for list pagination.
+// Pages is the list of page numbers to show; 0 means ellipsis.
+type Pagination struct {
+	Page       int
+	Limit      int
+	TotalCount int
+	TotalPages int
+	HasPrev    bool
+	HasNext    bool
+	PrevPage   int
+	NextPage   int
+	Filter     string
+	Pages      []int
+}
+
+// ListPosts returns a handler that renders the list of posts for the given filter with pagination.
 func (h *BlogPostHandler) ListPosts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		filter := r.PathValue("filter")
@@ -45,7 +101,61 @@ func (h *BlogPostHandler) ListPosts() http.HandlerFunc {
 			}
 		}
 
-		utils.Render(w, map[string]interface{}{"BlogEntries": postEntries}, "./templates/pages/notion-list.html", "./templates/partials/post-entry.html")
+		page := 1
+		if p := r.URL.Query().Get("page"); p != "" {
+			if n, err := strconv.Atoi(p); err == nil && n > 0 {
+				page = n
+			}
+		}
+		limit := defaultPageSize
+		if l := r.URL.Query().Get("limit"); l != "" {
+			if n, err := strconv.Atoi(l); err == nil && n > 0 {
+				if n > maxPageSize {
+					n = maxPageSize
+				}
+				limit = n
+			}
+		}
+
+		total := len(postEntries)
+		totalPages := 1
+		if limit > 0 {
+			totalPages = (total + limit - 1) / limit
+		}
+		if totalPages < 1 {
+			totalPages = 1
+		}
+		if page > totalPages {
+			page = totalPages
+		}
+
+		start := (page - 1) * limit
+		end := start + limit
+		if start > total {
+			start = total
+		}
+		if end > total {
+			end = total
+		}
+		pageEntries := postEntries[start:end]
+
+		pagination := Pagination{
+			Page:       page,
+			Limit:      limit,
+			TotalCount: total,
+			TotalPages: totalPages,
+			HasPrev:    page > 1,
+			HasNext:    page < totalPages,
+			PrevPage:   page - 1,
+			NextPage:   page + 1,
+			Filter:     filter,
+			Pages:      buildPageList(page, totalPages),
+		}
+
+		utils.Render(w, map[string]interface{}{
+			"BlogEntries": pageEntries,
+			"Pagination": pagination,
+		}, "./templates/pages/notion-list.html", "./templates/partials/post-entry.html")
 	}
 }
 
@@ -53,9 +163,7 @@ func (h *BlogPostHandler) ListPosts() http.HandlerFunc {
 // actual content is loaded via htmx from GetPostContent). Renders a 404 page if the slug does not exist.
 func (h *BlogPostHandler) GetPostPage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
-		segments := strings.Split(path, "/")
-		subtitle := segments[len(segments)-1]
+		subtitle := r.PathValue("slug")
 		postType := r.URL.Query().Get("type")
 
 		collectionID := h.cache.GetSource().GetDefaultCollectionID()
@@ -81,9 +189,7 @@ func (h *BlogPostHandler) GetPostPage() http.HandlerFunc {
 // via the cache. Uses the content PageRenderer interface, so the backend is interchangeable.
 func (h *BlogPostHandler) GetPostContent() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
-		segments := strings.Split(path, "/")
-		slug := segments[len(segments)-1]
+		slug := r.PathValue("slug")
 		postType := r.URL.Query().Get("type")
 
 		collectionID := h.cache.GetSource().GetDefaultCollectionID()

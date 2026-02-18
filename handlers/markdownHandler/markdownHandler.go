@@ -146,9 +146,7 @@ func (h *markdownHandler) GetReviewByTitle() http.HandlerFunc {
 	// convert the file to html
 	// return the html
 	return func(w http.ResponseWriter, r *http.Request) {
-		fullPath := r.URL.Path
-		segments := strings.Split(fullPath, "/")
-		currentSlug := segments[len(segments)-1]
+		currentSlug := r.PathValue("slug")
 		markdown := goldmark.New(
 			goldmark.WithRendererOptions(
 				html.WithUnsafe(),

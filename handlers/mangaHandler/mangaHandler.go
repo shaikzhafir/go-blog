@@ -58,8 +58,10 @@ func (h *mangaHandler) HandleCoverProxy() http.HandlerFunc {
 			Timeout: 10 * time.Second,
 		}
 
-		// Construct MangaDex URL
-		mangadexURL := fmt.Sprintf("https://uploads.mangadex.org/covers/%s", r.URL.Path[len("/api/proxy/covers/"):])
+		// Construct MangaDex URL from path params
+		id := r.PathValue("id")
+		filename := r.PathValue("filename")
+		mangadexURL := fmt.Sprintf("https://uploads.mangadex.org/covers/%s/%s", id, filename)
 
 		// Create request
 		req, err := http.NewRequest("GET", mangadexURL, nil)

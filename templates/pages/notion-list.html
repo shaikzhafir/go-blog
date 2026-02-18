@@ -1,9 +1,35 @@
 {{define "content"}}
-<div>
+<section class="w-full">
     <div>
         {{range .BlogEntries}}
         {{template "postEntry" .}}
         {{end}}
     </div>
-</div>
+    {{$pag := .Pagination}}
+    {{with $pag}}
+    {{if gt .TotalPages 1}}
+    <nav class="mt-8 flex w-full items-center justify-center gap-3 border-t border-slate-400/40 pt-6" aria-label="Pagination">
+        {{if .HasPrev}}
+        <a href="/notion/{{.Filter}}?page={{.PrevPage}}{{if ne .Limit 10}}&limit={{.Limit}}{{end}}" class="text-sm text-green-700 hover:text-green-900 transition-colors duration-200">Previous</a>
+        {{end}}
+        <div class="flex items-center gap-1">
+            {{range .Pages}}
+            {{if eq . 0}}
+            <span class="px-1 text-gray-500">…</span>
+            {{else}}
+            {{if eq . $pag.Page}}
+            <span class="min-w-[1.5rem] text-center text-sm font-bold text-gray-900" aria-current="page">{{.}}</span>
+            {{else}}
+            <a href="/notion/{{$pag.Filter}}?page={{.}}{{if ne $pag.Limit 10}}&limit={{$pag.Limit}}{{end}}" class="min-w-[1.5rem] text-center text-sm text-green-700 hover:text-green-900 transition-colors duration-200">{{.}}</a>
+            {{end}}
+            {{end}}
+            {{end}}
+        </div>
+        {{if .HasNext}}
+        <a href="/notion/{{.Filter}}?page={{.NextPage}}{{if ne .Limit 10}}&limit={{.Limit}}{{end}}" class="text-sm text-green-700 hover:text-green-900 transition-colors duration-200">Next</a>
+        {{end}}
+    </nav>
+    {{end}}
+    {{end}}
+</section>
 {{end}}

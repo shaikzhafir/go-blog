@@ -33,6 +33,36 @@
     }
   }
 
+  @layer components {
+    .page-shell {
+      @apply mx-auto w-full max-w-5xl;
+    }
+
+    .page-kicker {
+      @apply text-xs uppercase tracking-[0.18em] text-slate-600;
+    }
+
+    .page-title {
+      @apply mt-2 text-3xl font-semibold leading-tight text-slate-900 md:text-4xl;
+    }
+
+    .page-subtitle {
+      @apply mt-2 text-sm text-slate-600 md:text-base;
+    }
+
+    .panel-surface {
+      @apply rounded-xl border border-slate-300/70 bg-white/70 p-4 shadow-sm md:p-6;
+    }
+  }
+
   [data-loading] {
     display: none;
+  }
+
+  .notion-content > :first-child {
+    margin-top: 0;
+  }
+
+  .notion-content > :last-child {
+    margin-bottom: 0;
   }
