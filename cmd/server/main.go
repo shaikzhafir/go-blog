@@ -38,24 +38,23 @@ func main() {
 	readingNowHandler := handlers.NewReadingNowHandler(cacheService)
 	stravaHandler := handlers.NewStravaHandler(stravaClient)
 
+	// Page routes (no trailing slashes; resource params in path)
 	mux.HandleFunc("GET /reviews", handler.GetReviewsList())
-	mux.HandleFunc("GET /reviews/", handler.GetReviewByTitle())
+	mux.HandleFunc("GET /reviews/{slug}", handler.GetReviewByTitle())
 	mux.HandleFunc("GET /blogposts", handler.GetBlogList())
-	mux.HandleFunc("GET /notion/allposts/{filter}", blogPostHandler.ListPosts())
-	mux.HandleFunc("GET /notion/posts/", blogPostHandler.GetPostPage())
-	mux.HandleFunc("GET /notion/content/", blogPostHandler.GetPostContent())
+	mux.HandleFunc("GET /notion/{filter}", blogPostHandler.ListPosts())
+	mux.HandleFunc("GET /notion/posts/{slug}", blogPostHandler.GetPostPage())
+	mux.HandleFunc("GET /notion/content/{slug}", blogPostHandler.GetPostContent())
+	mangaH := mangaHandler.NewHandler()
 	mux.HandleFunc("GET /strava", stravaHandler.GetStravaHandler())
-
-	// Initialize manga handler
-	mangaHandler := mangaHandler.NewHandler()
-	mux.HandleFunc("GET /manga", mangaHandler.GetMangaPage())
-	mux.HandleFunc("GET /api/proxy/covers/", mangaHandler.HandleCoverProxy())
+	mux.HandleFunc("GET /manga", mangaH.GetMangaPage())
+	mux.HandleFunc("GET /api/proxy/covers/{id}/{filename}", mangaH.HandleCoverProxy())
 
 	mux.Handle("/", readingNowHandler.GetReadingNow())
 
 	internalMux := http.NewServeMux()
-	internalMux.HandleFunc("GET /cron/refreshStrava", stravaHandler.RefreshAccessToken())
-	internalMux.HandleFunc("GET /cron/refreshManga", mangaHandler.UpdateMangaData())
+	internalMux.HandleFunc("GET /cron/refresh-strava", stravaHandler.RefreshAccessToken())
+	internalMux.HandleFunc("GET /cron/refresh-manga", mangaH.UpdateMangaData())
 	// refresh strava token on init always in prod
 	err := mangaService.UpdateMangaData()
 	if err != nil {

@@ -1,9 +1,15 @@
 {{define "content"}}
-<div>
-  <div id="teehee" hx-get="/notion/content/{{.Slug}}{{if .PostType}}?type={{.PostType}}{{end}}" hx-swap="innerHTML" hx-trigger="load">
-    <div class="htmx-indicator">
+<section class="mx-auto w-full max-w-3xl">
+  <div
+    id="teehee"
+    class="notion-content"
+    hx-get="/notion/content/{{.Slug}}{{if .PostType}}?type={{.PostType}}{{end}}"
+    hx-swap="innerHTML"
+    hx-trigger="load"
+  >
+    <div class="htmx-indicator py-6 text-sm text-slate-500">
       loading... notion api is slow.. give chance..
     </div>
   </div>
-</div>
+</section>
 {{end}}
