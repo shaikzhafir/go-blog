@@ -61,7 +61,7 @@ type Name struct {
 		Type string `json:"type"`
 		Text struct {
 			Content string `json:"content"`
-			Link    string `json:"link"`
+			Link    any    `json:"link"`
 		} `json:"text"`
 		Annotations struct {
 			Bold          bool   `json:"bold"`
@@ -83,7 +83,7 @@ type Slug struct {
 		Type string `json:"type"`
 		Text struct {
 			Content string `json:"content"`
-			Link    string `json:"link"`
+			Link    any    `json:"link"`
 		} `json:"text"`
 		Annotations struct {
 			Bold          bool   `json:"bold"`
@@ -455,6 +455,15 @@ type converter struct {
 	postType string
 }
 
+func extractLinkURL(link any) string {
+	if linkMap, ok := link.(map[string]any); ok {
+		if url, ok := linkMap["url"].(string); ok {
+			return url
+		}
+	}
+	return ""
+}
+
 // RenderBulletedListItem implements Converter.
 func (c *converter) RenderBulletedListItem() error {
 	// first unmarshal into heading1 block
@@ -476,8 +485,27 @@ func (c *converter) RenderBulletedListItem() error {
 	if len(block.BulletedListItem.Text) == 0 {
 		return nil
 	}
-	block.Content = block.BulletedListItem.Text[0].Text.Content
-	err = tmpl.Execute(c.writer, block)
+
+	richText := block.BulletedListItem.Text[0]
+	content := richText.Text.Content
+	if content == "" {
+		content = richText.PlainText
+	}
+
+	linkURL := richText.Href
+	if linkURL == "" {
+		linkURL = extractLinkURL(richText.Text.Link)
+	}
+
+	renderData := struct {
+		Content string
+		LinkURL string
+	}{
+		Content: content,
+		LinkURL: linkURL,
+	}
+
+	err = tmpl.Execute(c.writer, renderData)
 	if err != nil {
 		return err
 	}

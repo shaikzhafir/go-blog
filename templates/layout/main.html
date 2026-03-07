@@ -5,17 +5,30 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://unpkg.com/htmx.org/dist/htmx.js"></script>
+    <script defer src="/static/vendor/htmx.min.js"></script>
     <link href="/static/output.css" type="text/css" rel="stylesheet" />
     <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/tokyo-night-dark.min.css"
   />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script>
-    // Handle the htmx afterRequest event to load highlight.js
-    document.addEventListener("htmx:afterRequest", function (event) {
-      hljs.highlightAll();
+    function highlightCode(root) {
+      if (!window.hljs) return;
+      var scope = root && root.querySelectorAll ? root : document;
+      var blocks = scope.querySelectorAll("pre code");
+      blocks.forEach(function (block) {
+        hljs.highlightElement(block);
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      highlightCode(document);
+    });
+
+    document.addEventListener("htmx:afterSwap", function (event) {
+      var root = event && event.detail ? event.detail.elt : null;
+      highlightCode(root);
     });
   </script>
     <title>szhafir's blog</title>

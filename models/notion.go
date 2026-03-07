@@ -57,7 +57,7 @@ type Heading1 struct {
 			Type string `json:"type"`
 			Text struct {
 				Content string `json:"content"`
-				Link    string `json:"link"`
+				Link    any    `json:"link"`
 			} `json:"text"`
 			Annotations struct {
 				Bold          bool   `json:"bold"`
@@ -81,7 +81,7 @@ type Heading2 struct {
 			Type string `json:"type"`
 			Text struct {
 				Content string `json:"content"`
-				Link    string `json:"link"`
+				Link    any    `json:"link"`
 			} `json:"text"`
 			Annotations struct {
 				Bold          bool   `json:"bold"`
@@ -105,7 +105,7 @@ type Heading3 struct {
 			Type string `json:"type"`
 			Text struct {
 				Content string `json:"content"`
-				Link    string `json:"link"`
+				Link    any    `json:"link"`
 			} `json:"text"`
 			Annotations struct {
 				Bold          bool   `json:"bold"`
@@ -128,7 +128,7 @@ type BulletedListItem struct {
 			Type string `json:"type"`
 			Text struct {
 				Content string `json:"content"`
-				Link    string `json:"link"`
+				Link    any    `json:"link"`
 			} `json:"text"`
 			Annotations struct {
 				Bold          bool   `json:"bold"`
@@ -162,7 +162,7 @@ type Page struct {
 				Type string `json:"type"`
 				Text struct {
 					Content string `json:"content"`
-					Link    string `json:"link"`
+					Link    any    `json:"link"`
 				} `json:"text"`
 				Annotations struct {
 					Bold          bool   `json:"bold"`
@@ -188,7 +188,7 @@ type Code struct {
 				Type string `json:"type"`
 				Text struct {
 					Content string `json:"content"`
-					Link    string `json:"link"`
+					Link    any    `json:"link"`
 				} `json:"text"`
 				Annotations struct {
 					Bold          bool   `json:"bold"`
@@ -206,7 +206,7 @@ type Code struct {
 			Type string `json:"type"`
 			Text struct {
 				Content string `json:"content"`
-				Link    string `json:"link"`
+				Link    any    `json:"link"`
 			} `json:"text"`
 			Annotations struct {
 				Bold          bool   `json:"bold"`
@@ -232,7 +232,7 @@ type Image struct {
 				Type string `json:"type"`
 				Text struct {
 					Content string `json:"content"`
-					Link    string `json:"link"`
+					Link    any    `json:"link"`
 				} `json:"text"`
 				Annotations struct {
 					Bold          bool   `json:"bold"`
