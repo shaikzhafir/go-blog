@@ -3,12 +3,6 @@
 @import 'tailwindcss/utilities';
 
 
-@font-face {
-  font-family: 'geist';
-  src: url("./public/fonts/Geist-Regular.otf");
-}
-
-
 @layer base {
     h1 {
       @apply text-4xl;

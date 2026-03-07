@@ -3,9 +3,6 @@ module.exports = {
   content: ['./templates/**/*.html', './*.html'],
   theme: {
     extend: {
-      fontFamily: {
-        geist: ['geist', 'sans-serif'],
-      },
       colors: {
         activity: {
           0: '#ebedf0',
