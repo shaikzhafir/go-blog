@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -485,24 +486,36 @@ func (c *converter) RenderBulletedListItem() error {
 	if len(block.BulletedListItem.Text) == 0 {
 		return nil
 	}
+	var contentHTML strings.Builder
+	for _, richText := range block.BulletedListItem.Text {
+		content := richText.PlainText
+		if content == "" {
+			content = richText.Text.Content
+		}
+		if content == "" {
+			continue
+		}
 
-	richText := block.BulletedListItem.Text[0]
-	content := richText.Text.Content
-	if content == "" {
-		content = richText.PlainText
-	}
+		segmentHTML := template.HTMLEscapeString(content)
+		if richText.Annotations.Code {
+			segmentHTML = `<code class="rounded bg-slate-200 px-1 py-0.5 font-mono text-[0.92em] text-red-600">` + segmentHTML + `</code>`
+		}
 
-	linkURL := richText.Href
-	if linkURL == "" {
-		linkURL = extractLinkURL(richText.Text.Link)
+		linkURL := richText.Href
+		if linkURL == "" {
+			linkURL = extractLinkURL(richText.Text.Link)
+		}
+		if linkURL != "" {
+			escapedURL := template.HTMLEscapeString(linkURL)
+			segmentHTML = `<a class="break-words text-sky-600 underline decoration-sky-300 underline-offset-4 transition-colors hover:text-sky-700" href="` + escapedURL + `" target="_blank" rel="noopener noreferrer">` + segmentHTML + `</a>`
+		}
+		contentHTML.WriteString(segmentHTML)
 	}
 
 	renderData := struct {
-		Content string
-		LinkURL string
+		Content template.HTML
 	}{
-		Content: content,
-		LinkURL: linkURL,
+		Content: template.HTML(contentHTML.String()),
 	}
 
 	err = tmpl.Execute(c.writer, renderData)
@@ -621,36 +634,47 @@ func (c *converter) RenderParagraph() error {
 	if len(block.Paragraph.RichText) == 0 {
 		return nil
 	}
-	// for loop in case rich_text has more than one element
+	templatePath, err := filepath.Abs("./templates/notion/blocks/paragraph.html")
+	if err != nil {
+		return err
+	}
+	tmpl, err := template.ParseFiles(templatePath)
+	if err != nil {
+		return err
+	}
+	var contentHTML strings.Builder
 	for _, richText := range block.Paragraph.RichText {
-		htmlBlock := models.HTMLBlock{}
-		// load template
-		// if it has link, use link template
-		templatePath, err := filepath.Abs("./templates/notion/blocks/paragraph.html")
-		if err != nil {
-			return err
+		content := richText.PlainText
+		if content == "" {
+			content = richText.Text.Content
 		}
-		if richText.Text.Link.URL != "" {
-			templatePath, err = filepath.Abs("./templates/notion/blocks/link.html")
-			if err != nil {
-				return err
-			}
-		}
-		tmpl, err := template.ParseFiles(templatePath)
-		if err != nil {
-			return err
+		if content == "" {
+			continue
 		}
 
-		htmlBlock.Content = richText.Text.Content
+		segmentHTML := template.HTMLEscapeString(content)
+		if richText.Annotations.Code {
+			segmentHTML = `<code class="rounded bg-slate-200 px-1 py-0.5 font-mono text-[0.92em] text-red-600">` + segmentHTML + `</code>`
+		}
 
-		if richText.Text.Link.URL != "" {
-			htmlBlock.Content = richText.Text.Link.URL
+		linkURL := richText.Href
+		if linkURL == "" {
+			linkURL = richText.Text.Link.URL
 		}
-		err = tmpl.Execute(c.writer, htmlBlock)
-		if err != nil {
-			return err
+		if linkURL != "" {
+			escapedURL := template.HTMLEscapeString(linkURL)
+			segmentHTML = `<a class="break-words text-sky-600 underline decoration-sky-300 underline-offset-4 transition-colors hover:text-sky-700" href="` + escapedURL + `" target="_blank" rel="noopener noreferrer">` + segmentHTML + `</a>`
 		}
-		continue
+		contentHTML.WriteString(segmentHTML)
+	}
+	renderData := struct {
+		Content template.HTML
+	}{
+		Content: template.HTML(contentHTML.String()),
+	}
+	err = tmpl.Execute(c.writer, renderData)
+	if err != nil {
+		return err
 	}
 	return nil
 }
