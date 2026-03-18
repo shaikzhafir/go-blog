@@ -31,10 +31,12 @@ func Info(format string, a ...interface{}) {
 }
 
 func Error(format string, a ...interface{}) {
-	logger.Error(format, a...)
+	message := fmt.Sprintf(format, a...)
+	logger.Error(message)
 }
 
 func Fatal(format string, a ...interface{}) {
-	logger.Error(format, a...)
+	message := fmt.Sprintf(format, a...)
+	logger.Error(message)
 	os.Exit(1)
 }

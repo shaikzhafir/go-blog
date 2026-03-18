@@ -108,6 +108,10 @@ type PropertyImage struct {
 		External struct {
 			URL string `json:"url"`
 		} `json:"external"`
+		File struct {
+			URL        string `json:"url"`
+			ExpiryTime string `json:"expiry_time"`
+		} `json:"file"`
 	} `json:"files"`
 }
 
@@ -410,9 +414,18 @@ func (nc *notionClient) GetReadingNowEntries(datasourceID string, filter string)
 }
 
 func convertAndStoreImage(entry Entry) (string, error) {
-	resp, err := http.Get(entry.Properties.Image.Files[0].External.URL)
+	imageFile := entry.Properties.Image.Files[0]
+	sourceURL := imageFile.External.URL
+	if sourceURL == "" {
+		sourceURL = imageFile.File.URL
+	}
+	if sourceURL == "" {
+		return "", fmt.Errorf("no image URL found for entry %s", entry.ID)
+	}
+
+	resp, err := http.Get(sourceURL)
 	if err != nil {
-		return "", fmt.Errorf("error downloading image from s3: %v", err)
+		return "", fmt.Errorf("error downloading image: %v", err)
 	}
 	defer resp.Body.Close()
 
