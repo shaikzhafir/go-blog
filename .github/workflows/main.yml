@@ -38,7 +38,7 @@ jobs:
 
       - name: Stop Systemd Service
         run: |
-          ssh -i ~/.ssh/id_rsa "$SSH_USER"@"$REMOTE_VM_IP" 'sudo systemctl stop blog'
+          ssh -i ~/.ssh/id_rsa "$SSH_USER"@"$REMOTE_VM_IP" 'systemctl --user stop blog'
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
@@ -54,7 +54,7 @@ jobs:
 
       - name: Restart Systemd Service
         run: |
-          ssh -i ~/.ssh/id_rsa "$SSH_USER"@"$REMOTE_VM_IP" 'sudo systemctl restart blog'
+          ssh -i ~/.ssh/id_rsa "$SSH_USER"@"$REMOTE_VM_IP" 'systemctl --user restart blog'
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_VM_IP: ${{ secrets.REMOTE_VM_IP }}
