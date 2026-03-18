@@ -398,10 +398,14 @@ func (nc *notionClient) GetReadingNowEntries(datasourceID string, filter string)
 		}
 		// Handle image (files field)
 		if len(entry.Properties.Image.Files) > 0 {
+			imgFile := entry.Properties.Image.Files[0]
+			log.Info("entry %s has image file: type=%s external=%s file=%s", slugEntry.Title, imgFile.Type, imgFile.External.URL, imgFile.File.URL)
 			slugEntry.Image, err = convertAndStoreImage(entry)
 			if err != nil {
 				log.Error("error converting and storing image: %v", err)
 			}
+		} else {
+			log.Info("entry %s has no image files (property type=%s)", slugEntry.Title, entry.Properties.Image.Type)
 		}
 		// Handle comment (rich_text field that might be empty)
 		if len(entry.Properties.Comment.RichText) > 0 {
