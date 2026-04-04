@@ -15,6 +15,41 @@ import (
 	"time"
 )
 
+// notionPublishedCheckboxProperty is the Notion DB checkbox property name.
+// Only rows with checkbox true are returned for blog lists and slug lookup.
+const notionPublishedCheckboxProperty = "active"
+
+// marshalBlogPostsQuery builds the data source / database query body: tag filter AND active checked.
+func marshalBlogPostsQuery(filterTag string, includeSort bool) ([]byte, error) {
+	payload := map[string]any{
+		"filter": map[string]any{
+			"and": []any{
+				map[string]any{
+					"property": "tags",
+					"multi_select": map[string]string{
+						"contains": filterTag,
+					},
+				},
+				map[string]any{
+					"property": notionPublishedCheckboxProperty,
+					"checkbox": map[string]bool{
+						"equals": true,
+					},
+				},
+			},
+		},
+	}
+	if includeSort {
+		payload["sorts"] = []any{
+			map[string]any{
+				"timestamp": "created_time",
+				"direction": "descending",
+			},
+		}
+	}
+	return json.Marshal(payload)
+}
+
 type notionClient struct {
 	NotionToken string
 	DatabaseID  string
@@ -225,14 +260,11 @@ func (nc *notionClient) GetPage(pageID string) (models.Page, error) {
 }
 
 func (nc *notionClient) GetAllPosts(databaseID string, filter string) (map[string]string, error) {
-	bodyPayload := bytes.NewBuffer([]byte(fmt.Sprintf(`{
-		"filter": {
-		"property": "tags",
-		"multi_select": {
-			"contains": "%s"
-		}
+	body, err := marshalBlogPostsQuery(filter, false)
+	if err != nil {
+		return nil, err
 	}
-	}`, filter)))
+	bodyPayload := bytes.NewBuffer(body)
 	req, err := http.NewRequest("POST", "https://api.notion.com/v1/databases/"+databaseID+"/query", bodyPayload)
 	if err != nil {
 		return nil, err
@@ -269,20 +301,11 @@ func (nc *notionClient) GetAllPosts(databaseID string, filter string) (map[strin
 }
 
 func (nc *notionClient) GetSlugEntries(datasourceID string, filter string) ([]SlugEntry, error) {
-	bodyPayload := bytes.NewBuffer([]byte(fmt.Sprintf(`{
-		"filter": {
-			"property": "tags",
-			"multi_select": {
-				"contains": "%s"
-			}
-		},
-		"sorts": [
-			{
-				"timestamp": "created_time",
-				"direction": "descending"
-			}
-		]
-	}`, filter)))
+	body, err := marshalBlogPostsQuery(filter, true)
+	if err != nil {
+		return nil, err
+	}
+	bodyPayload := bytes.NewBuffer(body)
 	req, err := http.NewRequest("POST", "https://api.notion.com/v1/data_sources/"+datasourceID+"/query", bodyPayload)
 	if err != nil {
 		return nil, err
