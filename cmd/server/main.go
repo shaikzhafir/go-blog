@@ -72,7 +72,9 @@ func main() {
 		localAddress = os.Getenv("PROD_ADDRESS")
 	}
 	log.Info("server started on %s", localAddress)
-	log.Fatal("server died", http.ListenAndServe(localAddress, mux))
+	if err := http.ListenAndServe(localAddress, mux); err != nil {
+		log.Fatal("server died: %v", err)
+	}
 }
 
 func runInternalServer(internalMux *http.ServeMux) {
