@@ -9,10 +9,21 @@ import (
 	"htmx-blog/services/content"
 	"htmx-blog/services/manga"
 	"htmx-blog/services/notion"
+	"htmx-blog/services/notion/imageenc"
 	"htmx-blog/services/strava"
 	"net/http"
 	"os"
 )
+
+// immutableImageCache wraps a handler and sets a long-lived, immutable
+// Cache-Control for responses under /images/. Safe because IDs are
+// content-addressed (Notion block ID) and never reused.
+func immutableImageCache(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		h.ServeHTTP(w, r)
+	})
+}
 
 func main() {
 	mux := http.NewServeMux()
@@ -20,9 +31,14 @@ func main() {
 	// for js and css files
 	staticFs := http.FileServer(http.Dir("./static"))
 	mux.Handle("/static/", http.StripPrefix("/static/", staticFs))
+	if !imageenc.Available() {
+		log.Error("cwebp binary not on PATH; new Notion images will fall back to their original format until it's installed (apt install webp)")
+	}
+
 	_, exists := os.LookupEnv("PROD")
 	if !exists {
-		mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir("./images"))))
+		imagesFs := http.StripPrefix("/images/", http.FileServer(http.Dir("./images")))
+		mux.Handle("/images/", immutableImageCache(imagesFs))
 	}
 	handler := markdownHandler.NewHandler()
 	stravaClient := strava.NewStravaService()
@@ -55,6 +71,7 @@ func main() {
 	internalMux := http.NewServeMux()
 	internalMux.HandleFunc("GET /cron/refresh-strava", stravaHandler.RefreshAccessToken())
 	internalMux.HandleFunc("GET /cron/refresh-manga", mangaH.UpdateMangaData())
+	internalMux.HandleFunc("POST /cron/backfill-images", handlers.ImageBackfillHandler())
 	// refresh strava token on init always in prod
 	err := mangaService.UpdateMangaData()
 	if err != nil {

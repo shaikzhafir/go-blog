@@ -8,7 +8,7 @@
             <div class="bg-white rounded-xl shadow-xl overflow-hidden hover:shadow-2xl transition-shadow duration-300">
                 <!-- Header Section with Image and Title -->
                 <div class="relative">
-                    <img src={{.Data.ImageURL}} alt="" class="w-full h-[40em] object-cover">
+                    <img src={{.Data.ImageURL}} alt="" loading="lazy" decoding="async" class="w-full h-[40em] object-cover" style="aspect-ratio: auto 1 / 1.5;">
                     <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
                         <h2 class="text-xl font-bold text-white">{{.Data.Attributes.Title.En}} ({{.ReadStatus}})</h2>
                     </div>

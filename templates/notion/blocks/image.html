@@ -1,7 +1,24 @@
 <figure class="my-10 flex justify-center">
+  {{if .HasWebP}}
+  <picture>
+    <source srcset="{{.WebpURL}}" type="image/webp" />
+    <img
+      class="{{if eq .PostType "book-reviews"}}w-48 h-72 object-cover{{else}}max-w-full{{end}} rounded-2xl border border-slate-200 shadow-sm"
+      src="{{.FallbackURL}}"
+      alt="post image"
+      loading="lazy"
+      decoding="async"
+      {{if and .Width .Height}}width="{{.Width}}" height="{{.Height}}"{{end}}
+    />
+  </picture>
+  {{else}}
   <img
     class="{{if eq .PostType "book-reviews"}}w-48 h-72 object-cover{{else}}max-w-full{{end}} rounded-2xl border border-slate-200 shadow-sm"
-    src="{{.Content}}"
+    src="{{.FallbackURL}}"
     alt="post image"
+    loading="lazy"
+    decoding="async"
+    {{if and .Width .Height}}width="{{.Width}}" height="{{.Height}}"{{end}}
   />
+  {{end}}
 </figure>

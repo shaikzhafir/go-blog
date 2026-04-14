@@ -460,30 +460,12 @@ func convertAndStoreImage(entry Entry) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error reading image bytes: %v", err)
 	}
-	// store locally in ./images
-	// Ensure the folder exists
-	absPath, err := filepath.Abs("./images")
+
+	url, _, err := storeImageBytes(entry.ID, imageBytes)
 	if err != nil {
-		return "", fmt.Errorf("error getting absolute path: %v", err)
+		return "", err
 	}
-
-	if _, err := os.Stat(absPath); os.IsNotExist(err) {
-		os.Mkdir(absPath, os.ModePerm)
-	}
-
-	var imageUrl string
-	imageID := entry.ID
-	filePath := filepath.Join(absPath, "/", imageID+".png")
-	err = os.WriteFile(filePath, imageBytes, 0755)
-	if err != nil {
-		return "", fmt.Errorf("error writing image to file: %v", err)
-	}
-
-	imageUrl = "https://cloud.shaikzhafir.com/images/" + imageID + ".png"
-	if os.Getenv("DEV") == "true" {
-		imageUrl = "/images/" + imageID + ".png"
-	}
-	return imageUrl, nil
+	return url, nil
 }
 
 func (nc *notionClient) GetDatabaseID() string {
@@ -735,13 +717,13 @@ func (*converter) RenderUnsupported() error {
 }
 
 func (c *converter) RenderImage() error {
-	// first unmarshal into paragraph block
 	var block models.Image
-	err := json.Unmarshal(c.rawBlock, &block)
-	if err != nil {
+	if err := json.Unmarshal(c.rawBlock, &block); err != nil {
 		return err
 	}
-	// load template
+	if len(block.Image.File.URL) == 0 {
+		return nil
+	}
 	templatePath, err := filepath.Abs("./templates/notion/blocks/image.html")
 	if err != nil {
 		return err
@@ -750,22 +732,39 @@ func (c *converter) RenderImage() error {
 	if err != nil {
 		return err
 	}
-	if len(block.Image.File.URL) == 0 {
-		return nil
-	}
+
+	// Meta sidecar is best-effort: missing/unreadable → no dimensions, no
+	// <picture> element (HasWebP stays false), template degrades to a plain
+	// <img> pointing at whatever URL the block already stored.
+	meta, _ := readImageMeta(block.ID)
+
 	renderData := struct {
-		Content  string
-		PostType string
+		WebpURL     string
+		FallbackURL string
+		Width       int
+		Height      int
+		HasWebP     bool
+		PostType    string
 	}{
-		Content:  block.Image.File.URL,
 		PostType: c.postType,
+		Width:    meta.Width,
+		Height:   meta.Height,
 	}
+
+	if meta.HasWebP {
+		renderData.HasWebP = true
+		renderData.WebpURL = imageURLFor(block.ID, "webp")
+		if meta.FallbackExt != "" && meta.FallbackExt != "webp" {
+			renderData.FallbackURL = imageURLFor(block.ID, meta.FallbackExt)
+		} else {
+			renderData.FallbackURL = renderData.WebpURL
+		}
+	} else {
+		renderData.FallbackURL = block.Image.File.URL
+	}
+
 	log.Info("rendering image block with post type: %s", c.postType)
-	err = tmpl.Execute(c.writer, renderData)
-	if err != nil {
-		return err
-	}
-	return nil
+	return tmpl.Execute(c.writer, renderData)
 }
 
 func (c *converter) RenderCode() error {
@@ -848,19 +847,17 @@ func (nc *notionClient) ParseAndWriteNotionBlock(writer io.Writer, rawBlock []by
 	}
 }
 
-// StoreNotionImage stores the image locally and updates the rawBlock with the new image url
-// first it will get the existing fresh image url from notion aws image url
-// then it will download the image from the aws image url
-// then it will store the image locally
+// StoreNotionImage downloads the image for a Notion image block, writes the
+// original plus a WebP sibling and a metadata sidecar under ./images/, and
+// rewrites the block's URL to point at the optimised copy (falling back to
+// the original when WebP encoding isn't possible).
 func StoreNotionImage(rawBlocks []json.RawMessage, i int) error {
 	var imageBlock models.Image
-	err := json.Unmarshal(rawBlocks[i], &imageBlock)
-	if err != nil {
+	if err := json.Unmarshal(rawBlocks[i], &imageBlock); err != nil {
 		log.Error("error unmarshalling imageblock: %v", err)
+		return err
 	}
 	awsImageURL := imageBlock.Image.File.URL
-	// read and write image to r2, then update the rawBlock with the new image url
-	// Download file from S3
 	resp, err := http.Get(awsImageURL)
 	if err != nil {
 		return fmt.Errorf("error downloading image from s3: %v", err)
@@ -871,29 +868,13 @@ func StoreNotionImage(rawBlocks []json.RawMessage, i int) error {
 	if err != nil {
 		return fmt.Errorf("error reading image bytes: %v", err)
 	}
-	// store locally in ./images
-	// Ensure the folder exists
-	absPath, err := filepath.Abs("./images")
+
+	newURL, _, err := storeImageBytes(imageBlock.ID, imageBytes)
 	if err != nil {
-		return fmt.Errorf("error getting absolute path: %v", err)
+		return err
 	}
+	imageBlock.Image.File.URL = newURL
 
-	if _, err := os.Stat(absPath); os.IsNotExist(err) {
-		os.Mkdir(absPath, os.ModePerm)
-	}
-
-	filePath := filepath.Join(absPath, "/", imageBlock.ID+".png")
-	err = os.WriteFile(filePath, imageBytes, 0755)
-	if err != nil {
-		return fmt.Errorf("error writing image to file: %v", err)
-	}
-
-	imageBlock.Image.File.URL = "https://cloud.shaikzhafir.com/images/" + imageBlock.ID + ".png"
-	if os.Getenv("DEV") == "true" {
-		imageBlock.Image.File.URL = "/images/" + imageBlock.ID + ".png"
-	}
-
-	// update rawBlock with new image url
 	rawBlocks[i], err = json.Marshal(imageBlock)
 	if err != nil {
 		return fmt.Errorf("error marshalling imageblock: %v", err)
