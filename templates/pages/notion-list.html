@@ -3,7 +3,7 @@
     {{if .SectionTitle}}
     <h1 class="font-display text-3xl font-bold tracking-tight text-ink mb-8 md:text-4xl">{{.SectionTitle}}</h1>
     {{end}}
-    <ul class="list-none space-y-3 p-0">
+    <ul class="list-none space-y-5 p-0">
         {{range .BlogEntries}}
         {{template "postEntry" .}}
         {{end}}
