@@ -45,6 +45,11 @@
     display: none;
   }
 
+  .notion-content {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
   .notion-content > :first-child {
     margin-top: 0;
   }
