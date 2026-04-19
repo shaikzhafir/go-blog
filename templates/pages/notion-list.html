@@ -1,10 +1,10 @@
 {{define "content"}}
 <section class="w-full">
-    <div>
+    <ul class="list-none space-y-3 p-0">
         {{range .BlogEntries}}
         {{template "postEntry" .}}
         {{end}}
-    </div>
+    </ul>
     {{$pag := .Pagination}}
     {{with $pag}}
     {{if gt .TotalPages 1}}

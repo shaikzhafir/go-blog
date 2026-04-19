@@ -3,6 +3,9 @@ module.exports = {
   content: ['./templates/**/*.html', './*.html'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+      },
       colors: {
         activity: {
           0: '#ebedf0',

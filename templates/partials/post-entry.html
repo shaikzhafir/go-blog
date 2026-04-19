@@ -1,10 +1,8 @@
 {{define "postEntry"}}
-<div class="my-2">
-  <div class="w-auto">
-    <p class="font-bold text-2xl">
-      <a href="{{if .PostType}}/notion/posts/{{.Slug}}?type={{.PostType}}{{else}}/notion/posts/{{.Slug}}{{end}}" class="inline">{{.Title}}</a>
-    </p>
-    <p class="text-slate-600">{{.CreatedTime}}</p>
-  </div>
-</div>
+<li class="group">
+  <a href="{{if .PostType}}/notion/posts/{{.Slug}}?type={{.PostType}}{{else}}/notion/posts/{{.Slug}}{{end}}" class="block">
+    <span class="text-base font-medium text-slate-900 group-hover:text-green-700 transition-colors duration-150">{{.Title}}</span>
+    <time class="ml-2 text-sm text-slate-400">{{.CreatedTime}}</time>
+  </a>
+</li>
 {{end}}

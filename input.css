@@ -29,7 +29,7 @@
 
   @layer components {
     .page-shell {
-      @apply mx-auto w-full max-w-5xl;
+      @apply w-full;
     }
 
     .page-kicker {
