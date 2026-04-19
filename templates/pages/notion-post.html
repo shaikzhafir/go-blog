@@ -7,9 +7,35 @@
     hx-swap="innerHTML"
     hx-trigger="load"
   >
-    <div class="htmx-indicator py-6 text-sm text-slate-500">
-      loading... notion api is slow.. give chance..
+    <div class="py-6 text-sm text-ink-muted">
+      Loading… hang tight.
     </div>
   </div>
 </section>
+
+<script>
+  document.addEventListener('htmx:responseError', function(event) {
+    if (event.detail.elt && event.detail.elt.id === 'teehee') {
+      event.detail.elt.innerHTML =
+        '<div class="py-8 text-center">' +
+        '<p class="text-ink-light">Couldn\u2019t load this post.</p>' +
+        '<button onclick="htmx.trigger(document.getElementById(\'teehee\'), \'load\')" ' +
+        'class="mt-3 text-sm font-medium text-terra hover:text-terra-dark transition-colors cursor-pointer">' +
+        'Try again</button>' +
+        '</div>';
+    }
+  });
+
+  document.addEventListener('htmx:sendError', function(event) {
+    if (event.detail.elt && event.detail.elt.id === 'teehee') {
+      event.detail.elt.innerHTML =
+        '<div class="py-8 text-center">' +
+        '<p class="text-ink-light">Network error — are you offline?</p>' +
+        '<button onclick="htmx.trigger(document.getElementById(\'teehee\'), \'load\')" ' +
+        'class="mt-3 text-sm font-medium text-terra hover:text-terra-dark transition-colors cursor-pointer">' +
+        'Try again</button>' +
+        '</div>';
+    }
+  });
+</script>
 {{end}}

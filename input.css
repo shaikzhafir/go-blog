@@ -5,25 +5,17 @@
 
 @layer base {
     h1 {
-      @apply text-4xl;
-      @apply font-bold;
-      @apply my-5;
+      @apply font-display text-4xl font-bold my-5 text-ink;
     }
     h2 {
-      @apply text-2xl;
-      @apply font-bold;
-      @apply my-5;
-  
+      @apply font-display text-2xl font-bold my-5 text-ink;
     }
     h3 {
-      @apply text-lg;
-      @apply font-bold;
-      @apply my-5;
-
+      @apply font-display text-xl font-bold my-5 text-ink;
     }
 
     body {
-        @apply bg-slate-300;
+        @apply bg-cream-100 font-body text-ink;
     }
   }
 
@@ -33,19 +25,19 @@
     }
 
     .page-kicker {
-      @apply text-xs uppercase tracking-[0.18em] text-slate-600;
+      @apply font-display text-xs uppercase tracking-[0.18em] text-ink-muted;
     }
 
     .page-title {
-      @apply mt-2 text-3xl font-semibold leading-tight text-slate-900 md:text-4xl;
+      @apply font-display mt-2 text-3xl font-semibold leading-tight text-ink md:text-4xl;
     }
 
     .page-subtitle {
-      @apply mt-2 text-sm text-slate-600 md:text-base;
+      @apply mt-2 text-sm text-ink-light md:text-base;
     }
 
     .panel-surface {
-      @apply rounded-xl border border-slate-300/70 bg-white/70 p-4 shadow-sm md:p-6;
+      @apply rounded-xl border border-cream-300 bg-cream-50 p-4 md:p-6;
     }
   }
 

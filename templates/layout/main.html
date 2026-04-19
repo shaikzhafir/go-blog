@@ -8,11 +8,11 @@
     <script defer src="/static/vendor/htmx.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;0,7..72,700;1,7..72,400&display=swap" rel="stylesheet" />
     <link href="/static/output.css" type="text/css" rel="stylesheet" />
     <link
     rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/tokyo-night-dark.min.css"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
   />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script>
@@ -34,47 +34,55 @@
       highlightCode(root);
     });
   </script>
-    <title>szhafir's blog</title>
+    <meta name="description" content="Personal blog by szhafir — books, coding, travel, and running." />
+    <meta property="og:title" content="szhafir" />
+    <meta property="og:description" content="Personal blog by szhafir — books, coding, travel, and running." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://cloud.shaikzhafir.com" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="szhafir" />
+    <meta name="twitter:description" content="Personal blog by szhafir — books, coding, travel, and running." />
+    <title>szhafir</title>
 </head>
 
-<body>
+<body class="bg-cream-100 text-ink">
     <div class="min-h-screen">
-        <header class="border-b border-slate-400/40 bg-slate-300">
-            <div class="mx-auto max-w-5xl px-5 py-6 md:px-8 lg:px-12">
+        <header class="border-b border-cream-300">
+            <div class="mx-auto max-w-3xl px-5 py-6 md:px-8">
                 <div class="flex items-baseline gap-6">
                     <a
                         data-nav
                         href="/"
-                        class="text-lg md:text-xl font-semibold text-green-700 hover:text-green-900 transition-colors duration-200 relative after:absolute after:bottom-[-2px] after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-green-900 after:transition-all after:content-['']"
+                        class="font-display text-lg md:text-xl font-semibold text-terra hover:text-terra-dark transition-colors duration-200 relative after:absolute after:bottom-[-2px] after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-terra-dark after:transition-all after:content-['']"
                     >
-                        home
+                        szhafir
                     </a>
                     <nav class="flex gap-5">
                         <a
                             data-nav
                             href="/notion/book-reviews"
-                            class="text-sm md:text-base font-medium text-gray-500 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-[-2px] after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-gray-900 after:transition-all after:content-['']"
+                            class="font-display text-sm md:text-base font-medium text-ink-light hover:text-ink transition-colors duration-200 relative after:absolute after:bottom-[-2px] after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-ink after:transition-all after:content-['']"
                         >
                             books
                         </a>
                         <a
                             data-nav
                             href="/notion/engineering"
-                            class="text-sm md:text-base font-medium text-gray-500 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-[-2px] after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-gray-900 after:transition-all after:content-['']"
+                            class="font-display text-sm md:text-base font-medium text-ink-light hover:text-ink transition-colors duration-200 relative after:absolute after:bottom-[-2px] after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-ink after:transition-all after:content-['']"
                         >
                             coding
                         </a>
                         <a
                             data-nav
                             href="/notion/travel"
-                            class="text-sm md:text-base font-medium text-gray-500 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-[-2px] after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-gray-900 after:transition-all after:content-['']"
+                            class="font-display text-sm md:text-base font-medium text-ink-light hover:text-ink transition-colors duration-200 relative after:absolute after:bottom-[-2px] after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-ink after:transition-all after:content-['']"
                         >
                             travel
                         </a>
                         <a
                             data-nav
                             href="/strava"
-                            class="text-sm md:text-base font-medium text-gray-500 hover:text-gray-900 transition-colors duration-200 relative after:absolute after:bottom-[-2px] after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-gray-900 after:transition-all after:content-['']"
+                            class="font-display text-sm md:text-base font-medium text-ink-light hover:text-ink transition-colors duration-200 relative after:absolute after:bottom-[-2px] after:left-0 after:h-0.5 after:w-0 hover:after:w-full data-[active=true]:after:w-full after:bg-ink after:transition-all after:content-['']"
                         >
                             strava
                         </a>
@@ -104,13 +112,12 @@
                 }
             })();
         </script>
-        <main class="mx-auto max-w-5xl px-5 py-12 md:px-8 lg:px-12">
+        <main class="mx-auto max-w-3xl px-5 py-12 md:px-8">
             {{template "content" .}}
         </main>
 
-        <footer class="border-t border-slate-400/40 py-8 text-center text-xs text-slate-500">
+        <footer class="border-t border-cream-300 py-8 text-center text-xs text-ink-muted">
             <p>© <script>document.write(new Date().getFullYear())</script> szhafir</p>
-            <p class="mt-1">Site powered by htmx, tailwind and go, content from Notion</p>
         </footer>
     </div>
 </body>

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	log "htmx-blog/logging"
 	"htmx-blog/services/cache"
@@ -50,6 +51,24 @@ func buildPageList(current, totalPages int) []int {
 		out = append(out, totalPages)
 	}
 	return out
+}
+
+// sectionTitle converts a URL filter slug into a human-readable heading.
+func sectionTitle(filter string) string {
+	titles := map[string]string{
+		"book-reviews": "Book Reviews",
+		"engineering":  "Coding",
+		"travel":       "Travel",
+		"speaking":     "Speaking",
+	}
+	if t, ok := titles[filter]; ok {
+		return t
+	}
+	// Fallback: capitalize and replace hyphens
+	if filter == "" {
+		return "Posts"
+	}
+	return strings.ToUpper(filter[:1]) + strings.ReplaceAll(filter[1:], "-", " ")
 }
 
 type BlogPostHandler struct {
@@ -153,8 +172,9 @@ func (h *BlogPostHandler) ListPosts() http.HandlerFunc {
 		}
 
 		utils.Render(w, map[string]interface{}{
-			"BlogEntries": pageEntries,
-			"Pagination": pagination,
+			"BlogEntries":  pageEntries,
+			"Pagination":   pagination,
+			"SectionTitle": sectionTitle(filter),
 		}, "./templates/pages/notion-list.html", "./templates/partials/post-entry.html")
 	}
 }
