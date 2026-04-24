@@ -11,6 +11,7 @@ import (
 	"htmx-blog/services/notion"
 	"htmx-blog/services/notion/imageenc"
 	"htmx-blog/services/strava"
+	"htmx-blog/services/visitors"
 	"net/http"
 	"os"
 )
@@ -49,6 +50,7 @@ func main() {
 	cacheService := cache.NewCache(contentSource)
 	blockRenderer := notion.NewBlockRenderer()
 	pageRenderer := content.NewPageRenderer(cacheService, blockRenderer)
+	visitorTracker := visitors.NewTracker("")
 
 	blogPostHandler := handlers.NewBlogPostHandler(cacheService, pageRenderer)
 	readingNowHandler := handlers.NewReadingNowHandler(cacheService)
@@ -72,6 +74,7 @@ func main() {
 	internalMux.HandleFunc("GET /cron/refresh-strava", stravaHandler.RefreshAccessToken())
 	internalMux.HandleFunc("GET /cron/refresh-manga", mangaH.UpdateMangaData())
 	internalMux.HandleFunc("POST /cron/backfill-images", handlers.ImageBackfillHandler())
+	internalMux.HandleFunc("GET /stats/visitors", visitorTracker.StatsHandler())
 	// refresh strava token on init always in prod
 	err := mangaService.UpdateMangaData()
 	if err != nil {
@@ -89,7 +92,7 @@ func main() {
 		localAddress = os.Getenv("PROD_ADDRESS")
 	}
 	log.Info("server started on %s", localAddress)
-	if err := http.ListenAndServe(localAddress, mux); err != nil {
+	if err := http.ListenAndServe(localAddress, visitorTracker.Middleware(mux)); err != nil {
 		log.Fatal("server died: %v", err)
 	}
 }
