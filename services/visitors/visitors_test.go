@@ -50,9 +50,13 @@ func TestMiddlewareCreatesCookieAndReusesExistingVisitor(t *testing.T) {
 		t.Fatal("expected cookie to be insecure outside PROD")
 	}
 
-	stats := readTestDay(t, dir, "2026-04-24")
+	stats := readCurrentStats(t, dir)
 	if stats.UniqueCount != 1 {
 		t.Fatalf("expected 1 unique visitor, got %d", stats.UniqueCount)
+	}
+	record := readRecordStats(t, dir)
+	if record.UniqueCount != 1 || record.Date != "2026-04-24" {
+		t.Fatalf("unexpected record %+v", record)
 	}
 
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
@@ -64,13 +68,13 @@ func TestMiddlewareCreatesCookieAndReusesExistingVisitor(t *testing.T) {
 		t.Fatal("expected no new cookie when visitor cookie already exists")
 	}
 
-	stats = readTestDay(t, dir, "2026-04-24")
+	stats = readCurrentStats(t, dir)
 	if stats.UniqueCount != 1 {
 		t.Fatalf("expected visitor to be deduped, got %d", stats.UniqueCount)
 	}
 }
 
-func TestMiddlewareCountsSameVisitorOnNextDay(t *testing.T) {
+func TestMiddlewareResetsCurrentDayButKeepsRecord(t *testing.T) {
 	dir := t.TempDir()
 	restoreTime := setCurrentTime(t, time.Date(2026, 4, 24, 10, 0, 0, 0, time.Local))
 	defer restoreTime()
@@ -92,11 +96,17 @@ func TestMiddlewareCountsSameVisitorOnNextDay(t *testing.T) {
 	secondRec := httptest.NewRecorder()
 	handler.ServeHTTP(secondRec, secondReq)
 
-	if got := readTestDay(t, dir, "2026-04-24").UniqueCount; got != 1 {
-		t.Fatalf("expected 1 visitor on day one, got %d", got)
+	stats := readCurrentStats(t, dir)
+	if stats.Date != "2026-04-25" {
+		t.Fatalf("expected current stats to reset to 2026-04-25, got %s", stats.Date)
 	}
-	if got := readTestDay(t, dir, "2026-04-25").UniqueCount; got != 1 {
-		t.Fatalf("expected 1 visitor on day two, got %d", got)
+	if stats.UniqueCount != 1 {
+		t.Fatalf("expected current day count 1, got %d", stats.UniqueCount)
+	}
+
+	record := readRecordStats(t, dir)
+	if record.Date != "2026-04-24" || record.UniqueCount != 1 {
+		t.Fatalf("expected record to stay on first highest day, got %+v", record)
 	}
 }
 
@@ -201,30 +211,34 @@ func TestMiddlewareWritesConcurrentUniqueVisitorsSafely(t *testing.T) {
 	}
 	wg.Wait()
 
-	stats := readTestDay(t, dir, "2026-04-24")
+	stats := readCurrentStats(t, dir)
 	if stats.UniqueCount != 25 {
 		t.Fatalf("expected 25 unique visitors, got %d", stats.UniqueCount)
 	}
 	if len(stats.VisitorHashes) != 25 {
 		t.Fatalf("expected 25 visitor hashes, got %d", len(stats.VisitorHashes))
 	}
+
+	record := readRecordStats(t, dir)
+	if record.UniqueCount != 25 || record.Date != "2026-04-24" {
+		t.Fatalf("unexpected record %+v", record)
+	}
 }
 
-func TestStatsHandlerDefaultWindowAndCap(t *testing.T) {
+func TestStatsHandlerReturnsTodayAndHighestDay(t *testing.T) {
 	dir := t.TempDir()
 	restoreTime := setCurrentTime(t, time.Date(2026, 4, 24, 10, 0, 0, 0, time.Local))
 	defer restoreTime()
 
 	tracker := NewTracker(dir).(*tracker)
-	writeTestDay(t, tracker, &dailyStats{
+	writeJSONFile(t, dir, currentStatsFile, currentStats{
 		Date:          "2026-04-24",
-		VisitorHashes: []string{"a", "b"},
 		UniqueCount:   2,
+		VisitorHashes: []string{"a", "b"},
 	})
-	writeTestDay(t, tracker, &dailyStats{
-		Date:          "2026-04-23",
-		VisitorHashes: []string{"c"},
-		UniqueCount:   1,
+	writeJSONFile(t, dir, recordStatsFile, recordStats{
+		Date:        "2026-04-20",
+		UniqueCount: 7,
 	})
 
 	rec := httptest.NewRecorder()
@@ -239,52 +253,36 @@ func TestStatsHandlerDefaultWindowAndCap(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if resp.Days != defaultStatsDays {
-		t.Fatalf("expected default %d days, got %d", defaultStatsDays, resp.Days)
+	if resp.TodayDate != "2026-04-24" || resp.TodayUniqueVisitors != 2 {
+		t.Fatalf("unexpected today stats %+v", resp)
 	}
-	if len(resp.Daily) != defaultStatsDays {
-		t.Fatalf("expected %d daily entries, got %d", defaultStatsDays, len(resp.Daily))
-	}
-	if resp.TotalUniqueVisitors != 3 {
-		t.Fatalf("expected total 3, got %d", resp.TotalUniqueVisitors)
-	}
-	if resp.Daily[0].Date != "2026-04-24" || resp.Daily[0].UniqueCount != 2 {
-		t.Fatalf("unexpected first day %+v", resp.Daily[0])
-	}
-	if resp.Daily[1].Date != "2026-04-23" || resp.Daily[1].UniqueCount != 1 {
-		t.Fatalf("unexpected second day %+v", resp.Daily[1])
-	}
-
-	capRec := httptest.NewRecorder()
-	capReq := httptest.NewRequest(http.MethodGet, "/stats/visitors?days=400", nil)
-	tracker.StatsHandler().ServeHTTP(capRec, capReq)
-
-	if capRec.Code != http.StatusOK {
-		t.Fatalf("expected capped request to succeed, got %d", capRec.Code)
-	}
-
-	resp = statsResponse{}
-	if err := json.NewDecoder(capRec.Body).Decode(&resp); err != nil {
-		t.Fatalf("failed to decode capped response: %v", err)
-	}
-	if resp.Days != maxStatsDays {
-		t.Fatalf("expected capped days %d, got %d", maxStatsDays, resp.Days)
-	}
-	if len(resp.Daily) != maxStatsDays {
-		t.Fatalf("expected %d daily entries after cap, got %d", maxStatsDays, len(resp.Daily))
+	if resp.HighestVisitorDate != "2026-04-20" || resp.HighestVisitorCount != 7 {
+		t.Fatalf("unexpected record stats %+v", resp)
 	}
 }
 
-func TestStatsHandlerRejectsInvalidDays(t *testing.T) {
+func TestStatsHandlerResetsStaleCurrentDayInResponse(t *testing.T) {
 	dir := t.TempDir()
+	restoreTime := setCurrentTime(t, time.Date(2026, 4, 24, 10, 0, 0, 0, time.Local))
+	defer restoreTime()
+
 	tracker := NewTracker(dir).(*tracker)
+	writeJSONFile(t, dir, currentStatsFile, currentStats{
+		Date:          "2026-04-23",
+		UniqueCount:   3,
+		VisitorHashes: []string{"a", "b", "c"},
+	})
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/stats/visitors?days=abc", nil)
+	req := httptest.NewRequest(http.MethodGet, "/stats/visitors", nil)
 	tracker.StatsHandler().ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", rec.Code)
+	var resp statsResponse
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.TodayDate != "2026-04-24" || resp.TodayUniqueVisitors != 0 {
+		t.Fatalf("expected stale day to reset in response, got %+v", resp)
 	}
 }
 
@@ -299,25 +297,42 @@ func setCurrentTime(t *testing.T, now time.Time) func() {
 	}
 }
 
-func readTestDay(t *testing.T, dir, day string) dailyStats {
+func readCurrentStats(t *testing.T, dir string) currentStats {
 	t.Helper()
 
-	data, err := os.ReadFile(filepath.Join(dir, day+".json"))
-	if err != nil {
-		t.Fatalf("failed to read test stats file: %v", err)
-	}
-
-	var stats dailyStats
-	if err := json.Unmarshal(data, &stats); err != nil {
-		t.Fatalf("failed to decode test stats file: %v", err)
-	}
-
+	var stats currentStats
+	readJSONFile(t, filepath.Join(dir, currentStatsFile), &stats)
 	return stats
 }
 
-func writeTestDay(t *testing.T, tracker *tracker, stats *dailyStats) {
+func readRecordStats(t *testing.T, dir string) recordStats {
 	t.Helper()
-	if err := tracker.writeDay(stats); err != nil {
-		t.Fatalf("failed to write test day: %v", err)
+
+	var stats recordStats
+	readJSONFile(t, filepath.Join(dir, recordStatsFile), &stats)
+	return stats
+}
+
+func readJSONFile(t *testing.T, path string, target any) {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read test file %s: %v", path, err)
+	}
+	if err := json.Unmarshal(data, target); err != nil {
+		t.Fatalf("failed to decode test file %s: %v", path, err)
+	}
+}
+
+func writeJSONFile(t *testing.T, dir, name string, value any) {
+	t.Helper()
+
+	data, err := json.Marshal(value)
+	if err != nil {
+		t.Fatalf("failed to marshal test file %s: %v", name, err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
+		t.Fatalf("failed to write test file %s: %v", name, err)
 	}
 }
